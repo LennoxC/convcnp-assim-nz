@@ -1,34 +1,16 @@
 # This script is intended to download ERA5 data from the Copernicus Climate Change Service (C3S) Climate Data Store (CDS).
 # Currently only implemented for downloads of hourly data, grouped by day.
 
+# After signing up for an API key, you will need to accept the license agreement. 
+# See https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=download#manage-licences
+# You will be prompted to do this the first time you attempt to use the API.
+
 from src.config.env_loader import *
+from src.config.logging_config import setup_logging
+from src.utils.era5.cds_client import download_era5_data
 from argparse import ArgumentParser
 import cdsapi
 import os
-import logging
-
-
-
-# Set up logging
-def setup_logging():
-    """
-    Set up logging configuration.
-    """
-    logging.basicConfig(
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        level=logging.INFO,
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-    
-    # Clear all handlers attached to the 'cdsapi' logger
-    cdsapi_logger = logging.getLogger("cdsapi")
-    cdsapi_logger.handlers.clear()
-    
-    # Prevent the cdsapi logger from propagating its logs to the root logger
-    cdsapi_logger.propagate = False
-    
-    logger = logging.getLogger(__name__)
-    return logger
 
 def get_commandline_args():
     """
@@ -58,8 +40,9 @@ def get_commandline_args():
     return parser.parse_args()
 
 def main():
-    print(os.getenv("DATA_HOME"))
-    pass
-
+    setup_logging()
+    args = get_commandline_args()
+    download_era5_data(args)
+    
 if __name__ == "__main__":
     main()

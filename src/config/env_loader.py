@@ -16,8 +16,26 @@ import os
 ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
 load_dotenv(ENV_PATH, override=False)
 
-def get_env_var(var_name, default=None):
+def get_env_var(var_name, default=None, *, return_default_flag=False):
     """
     Get an environment variable or return a default value.
+
+    - By default (when `return_used_default` is False) this returns the value only.
+    - If `return_used_default` is True, it returns a tuple `(value, used_default)`
+      where `used_default` is True if the returned value came from `default`.
+      This may be useful for logging (e.g. to warn the user that a default was used).
+
+    Note: this determines whether the default was used by checking whether
+    the variable name exists in `os.environ`. An environment variable set to
+    the empty string counts as present (so `used_default` will be False).
     """
-    return os.getenv(var_name, default)
+    if var_name in os.environ:
+        value = os.environ.get(var_name)
+        used_default = False
+    else:
+        value = default
+        used_default = True
+
+    if return_default_flag:
+        return value, used_default
+    return value
