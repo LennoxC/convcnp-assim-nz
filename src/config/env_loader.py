@@ -6,7 +6,7 @@
 # an example .env file is provided as .env_template
 #
 # environmental variables are then loaded with os.getenv("VAR_NAME")
-# you can also use the helper function get_env_var("VAR_NAME", default_value). If the variable is not found, it returns default_value.
+# you can also use the helper function get_env_var("VAR_NAME", default_value). If the variable is not found, it returns default_value (which is None by default).
 # e.g., DATA_HOME = get_env_var("DATA_HOME", "/default/path/to/data")
 
 from pathlib import Path

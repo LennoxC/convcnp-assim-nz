@@ -5,10 +5,17 @@ import yaml
 import datetime
 from pathlib import Path
 
+"""
+CDS API client and ERA5 data download functions.
+"""
+
 logger = logging.getLogger(__name__)
 
 def get_cds_client():
-    
+    """
+    Create and return a CDS API client using the cdsapi library.
+    The API URL and key are retrieved from environment variables.
+    """
     
     url, warn = get_env_var("CDS_API_URL", default="https://cds.climate.copernicus.eu/api", return_default_flag=True) # default API URL if not set in env
 
@@ -52,6 +59,8 @@ def get_pressure_files(_times_dt: list, _cfg: dict):
                )
     
     logger.info(f"Downloaded pressure-level data for {dates_str} to {download_file}")
+
+    # leaving these here in-case it is required later
 
     # # Wait for the download to finish
     # while not download_file.is_file():
@@ -100,6 +109,8 @@ def get_surface_files(_times_dt, _cfg):
                },
                download_file)
     logger.info(f"Downloaded surface-level data for {dates_str} to {download_file}")
+
+    # leaving these here in-case it is required later
 
     # Wait for the download to finish
     # while not download_file.is_file():

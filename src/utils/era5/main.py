@@ -40,6 +40,9 @@ def get_commandline_args():
     return parser.parse_args()
 
 def main():
+    """
+    Main function to download ERA5 data based on command line arguments.
+    """
     setup_logging()
     args = get_commandline_args()
     download_era5_data(args)
