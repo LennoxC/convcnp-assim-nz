@@ -5,14 +5,19 @@ import pandas as pd
 import xarray as xr
 from datetime import datetime
 
+from src.data_processing.file_loaders.era5_fileloader import ERA5FileLoader
 from src.data_processing.utils_processor import DataProcess
 from src.config.env_loader import get_env_var
 
 class ProcessERA5(DataProcess):
+    file_loader: ERA5FileLoader = None
 
     def __init__(self) -> None:
         super().__init__()
+        self.file_loader = ERA5FileLoader()
 
+    # loading from the file system is abstracted to the file loader
+    # different file structures can be handled there without changing this class (changes would be made only in the file loader)
 
     def load_ds(self, 
                 mode: Literal['surface', 'pressure'],
@@ -24,163 +29,4 @@ class ProcessERA5(DataProcess):
             years (list): specific years, retrieves all if set to None
         """
 
-        if mode not in ['surface', 'pressure']:
-            raise ValueError(f'mode must be "surface" or "pressure", not {mode}')
-
-        # convert year to the correct format
-        if type(years) == int:
-            years = [years]
-        elif type(years) == str:
-            years = [int(years)]
-        elif type(years) == list:
-            years = [int(year) for year in years]
-            if len(set(years)) == 1:
-                years = [years[0]]
-        else:
-            ValueError (f'Years should be int, str or list, not {type(years)}')
-
-        filenames = self.get_filenames(mode, years)
-        print(filenames)
-        return xr.open_mfdataset(filenames)
-
-    '''
-    def ds_to_da(self,
-                 ds: xr.Dataset,
-                 var: Literal[tuple(VARIABLE_OPTIONS)],
-                 ) -> xr.DataArray:
-        """
-        Extracts dataarray from dataset (variable data only, loses some metadata)
-        If variable is temperature, converts from Kelvin to Celsius
-        Args: 
-            ds (xr.Dataset): dataset
-            var (str): variable
-        """
-        da = ds[VAR_ERA5[var]['var_name']]
-        if var == 'temperature':
-            da = self.kelvin_to_celsius(da)
-        return da
-
-
-    def convert_hourly_to_daily(self, 
-                                ds, 
-                                function:Literal['mean', 'sum']='mean'):
-        if function == 'mean':
-            ds = ds.resample(time='D').mean()
-        elif function == 'sum':
-            ds = ds.resample(time='D').sum()
-        else:
-            raise ValueError(f'function={function} not recognised')
-        # ! below line causes error in convNP run
-        #ds['time'] = ds['time'].dt.strftime('%Y-%m-%d')
-        return ds
-    
-
-    def coarsen_da(self, da: xr.DataArray, coarsen_by: int, boundary: str = 'trim'):
-        return super().coarsen_da(da, coarsen_by, boundary)
-
-
-    def get_parent_path(self,
-                        var: Literal[tuple(VARIABLE_OPTIONS)],
-                        ):
-        if VAR_ERA5[var]['folder'] == 'NZ_land_processed_synctodatasets':
-            parent = "parent_processed_synctodatasets"
-        elif VAR_ERA5[var]['folder'] == 'NZ_land_processed':
-            parent = "parent_processed"
-        else:
-            parent = "parent"
-        return f'{DATA_PATHS["era5"][parent]}/{VAR_ERA5[var]["subdir"]}'
-    '''
-
-    def get_filenames(self, mode, years
-                      #mode: Literal['surface', 'pressure'],
-                      #years: List=None,
-                      ) -> List[str]:
-        """ Get list of ERA5 filenames for variable and list of years (if specified) """ 
-
-        # we must have either 'surface' or 'pressure' mode as those are the two ERA5 data types
-        if mode not in ["surface", "pressure"]:
-            raise ValueError(f'mode must be "surface" or "pressure", not {mode}')
-
-        # find the home path for the specified mode
-        home_path = os.path.join(get_env_var("DATA_HOME"), get_env_var("ERA5_SUFFIX", default="era5"), mode)
-   
-        # search all .nc files in home path if no years specified
-        if years is None:
-            filenames = glob.glob(f'{home_path}/*/*/*.nc')
-        else: # search for all .nc files in specified years
-            filenames = []
-            for year in years:
-                filenames_year = glob.glob(f'{home_path}/{year}/*.nc')
-                if len(filenames_year) == 0:
-                    filenames_year = glob.glob(f'{home_path}/{year}/*/*.nc')
-                filenames = filenames + filenames_year
-
-        return filenames
-
-    '''
-    def load_ds_time(self, 
-                     var: Literal[tuple(VARIABLE_OPTIONS)],
-                     time,
-                     ) -> xr.Dataset:
-        """ 
-        Loads dataset with time dimension
-        Args: 
-            var (str): variable
-            time: datetime obj
-                    """
-        if isinstance(time, datetime):
-            year = [time.year]
-        elif isinstance(time, (list, pd.DatetimeIndex)):
-            year = set(t.year for t in time)
-        filenames = self.get_filenames(var, year)
-        ds = xr.open_mfdataset(filenames)
-        if 'expver' in list(ds.coords):
-            ds = ds.sel(expver=1)
-            ds = ds.drop('expver')
-        return ds.sel(time=time).load()
-
-
-    def kelvin_to_celsius(self, da: xr.DataArray):
-        return da - 273.15
-    
-import xesmf as xe
-def interpolate_era5(era5, ds, var):
-    "Interpolate ERA5 to match the resolution of ds"
-    era5_var = VAR_ERA5[var]['var_name']
-    if type(era5) is xr.Dataset:
-        era5 = era5[era5_var]
-    
-    ds_out = xr.Dataset({
-        'latitude': (['latitude'], ds.latitude.values),
-        'longitude': (['longitude'], ds.longitude.values),
-    })
-
-    # method = 'bilinear'
-    # Ny_in, Nx_in = len(era5.latitude), len(era5.longitude)
-    # Ny_out, Nx_out = len(ds.latitude), len(ds.longitude)
-    # filename = f'{method}_{Ny_in}x{Nx_in}_{Ny_out}x{Nx_out}.nc'
-    # filepath = os.path.join(DATA_PATHS['regridder_weights']['parent'], filename)
-    # if os.path.exists(filepath):
-    #     regridder = xe.Regridder(hold.isel(Time=0), 
-    #                                 ds_out, 
-    #                                 'bilinear', 
-    #                                 reuse_weights=True,
-    #                                 filename=filepath
-    #                                 )
-    # else:
-    regridder = xe.Regridder(era5.isel(time=0), 
-                            ds_out, 
-                            'bilinear', 
-                            reuse_weights=False,
-                            # filename=filepath
-                            )
-    # regridder.to_netcdf(filepath)
-    
-    interp_hold = regridder(era5)
-    return interp_hold
-
-
-if __name__ == '__main__':
-    pass
-    
-    '''
+        return self.file_loader.load_era5_dataset(mode, years)

@@ -3,19 +3,19 @@ import os
 
 from src.data_processing.utils_processor import DataProcess
 from src.config.env_loader import get_env_var
+from src.data_processing.file_loaders.topology_fileloader import TopologyFileLoader
 
 class ProcessTopography(DataProcess):
+    file_loader: TopologyFileLoader = None
 
     def __init__(self) -> None:
         super().__init__()
+        self.file_loader = TopologyFileLoader()
 
     def load_ds(self) -> xr.Dataset:
-        
-        filename = os.path.join(get_env_var('DATA_HOME'),
-                   get_env_var('TOPOGRAPHY_SUFFIX'),
-                   get_env_var('TOPOGRAPHY_FILE'))
-        
-        return self.open_ds(file=filename)
+        # loading from the file system is abstracted to the file loader
+        # different file structures can be handled there without changing this class (changes would be made only in the file loader)
+        return self.file_loader.load_topology_file()
     
     def ds_to_da(self, 
                  ds: xr.Dataset, 
