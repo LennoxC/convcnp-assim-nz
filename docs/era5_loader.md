@@ -1,10 +1,10 @@
 # ERA5 Loader
-### `src.utils.era5.main`
+### `src.utils.era5_loader.main`
 
 This is a command line tool to download climate data from the [Climate Data Store](https://cds.climate.copernicus.eu/).
 
 To run this module:
-`python -m src.utils.era5.main {args}`
+`python -m src.utils.era5_loader.main {args}`
 
 ## Arguments
 - `-c` `--config` **(required)**. Path to the configuration file which specifies the data format you're requesting from the climate data store. Example files are in the `/era5_samples` folder.
