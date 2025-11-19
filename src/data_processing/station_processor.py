@@ -12,17 +12,17 @@ import pandas as pd
 class ProcessStations(DataProcess):
     stations_metadata: pd.DataFrame = None
     file_loader: StationFileLoader = None
-    stations_by_variable: dict[str, list[int]] = None
+    #stations_by_variable: dict[str, list[int]] = None
 
     # loading from the file system is abstracted to the file loader
     # different file structures can be handled there without changing this class (changes would be made only in the file loader)
 
     def __init__(self) -> None:
         super().__init__()
+        self.file_loader = StationFileLoader()
 
         self.stations_metadata = self.file_loader.load_station_metadata()
-        self.file_loader = StationFileLoader()
-        self.stations_by_variable = self.paths_of_stations_with_variable()
+        #self.stations_by_variable = self.paths_of_stations_with_variable()
     
     # create a dictionary mapping stations to station ids for each measured variable
     # variables could be things like 'temperature', 'humidity', etc.
