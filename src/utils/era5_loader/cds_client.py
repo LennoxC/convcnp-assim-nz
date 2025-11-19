@@ -38,7 +38,9 @@ def get_pressure_files(_times_dt: list, _cfg: dict):
     :return: None
     """
     dates_str = f'{_times_dt.strftime("%Y%m%d")}'
-    times = [f'{i:02d}:00' for i in range(0, 24)]
+    # hourly frequency is the amount of hours between each time entry. For example, if hourly_freq=3, times will be ['00:00', '03:00', '06:00', ..., '21:00']
+    hourly_freq = _cfg["hourly_freq"]
+    times = [f'{i:02d}:00' for i in range(0, 24, hourly_freq)]
     download_file = Path(_cfg['download_dir']) / 'pressure' / str(_times_dt.year) / str(_times_dt.month).zfill(2) / f'ERA5_{dates_str}_pressure.nc'
     # Create the directory if it doesn't exist
     download_file.parent.mkdir(parents=True, exist_ok=True)
@@ -90,8 +92,11 @@ def get_surface_files(_times_dt, _cfg):
     : param cfg: the dictionary of configuration settings.
     : return: None
     """
-    dates_str = f'{_times_dt.strftime("%Y%m%d")}'
-    times = [f'{i:02d}:00' for i in range(0, 24)]
+    dates_str = f'{_times_dt.strftime("%Y%m%d")}'    
+    # hourly frequency is the amount of hours between each time entry. For example, if hourly_freq=3, times will be ['00:00', '03:00', '06:00', ..., '21:00']
+    hourly_freq = _cfg["hourly_freq"]
+    times = [f'{i:02d}:00' for i in range(0, 24, hourly_freq)]
+    
     download_file = Path(_cfg['download_dir']) / 'surface' / str(_times_dt.year) / str(_times_dt.month).zfill(2) / f'ERA5_{dates_str}_surface.nc'
     # Create the directory if it doesn't exist
     download_file.parent.mkdir(parents=True, exist_ok=True)
@@ -153,6 +158,13 @@ def download_era5_data(args):
     cfg['start_date'] = args.start_date
     cfg['end_date'] = args.end_date
 
+    # default to downloading both surface and pressure data unless specified otherwise
+    if 'download_surface' not in cfg:
+        cfg['download_surface'] = True
+    if 'download_pressure' not in cfg:
+        cfg['download_pressure'] = True
+    
+
     # Sort out the start and end times.
     times_dt = []
     start_dt = datetime.datetime.strptime(args.start_date, '%Y%m%d')
@@ -169,12 +181,14 @@ def download_era5_data(args):
             logger.info(f"Downloading data for {day.strftime('%Y-%m-%d')}")
 
             # Download pressure-level files
-            logger.info("Downloading pressure-level files.")
-            get_pressure_files(day, cfg)
+            if cfg['download_pressure']:
+                logger.info("Downloading pressure-level files.")
+                get_pressure_files(day, cfg)
 
             # Download surface-level files
-            logger.info("Downloading surface-level files.")
-            get_surface_files(day, cfg)
+            if cfg['download_surface']:
+                logger.info("Downloading surface-level files.")
+                get_surface_files(day, cfg)
 
     else:
         # Parallel downloads
@@ -184,8 +198,10 @@ def download_era5_data(args):
         # Create a list of all tasks (each day produces 2 tasks)
         all_tasks = []
         for day in times_dt:
-            all_tasks.append((get_pressure_files, day, cfg))
-            all_tasks.append((get_surface_files, day, cfg))
+            if cfg['download_pressure']:
+                all_tasks.append((get_pressure_files, day, cfg))
+            if cfg['download_surface']:
+                all_tasks.append((get_surface_files, day, cfg))
 
         # Define your batch size (number of concurrent requests)
         batch_size = 10
