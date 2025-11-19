@@ -1,0 +1,40 @@
+Nort: -32
+West: 165
+Sout: -50
+East: 180
+
+hourly_freq: 6
+
+# optional flags to specify whether to download surface and/or pressure data (default both are true)
+download_surface: true
+download_pressure: false
+
+surface_var:
+- '2m_temperature'
+- 'land_sea_mask'
+- 'mean_sea_level_pressure'
+- 'sea_ice_cover'
+- 'sea_surface_temperature'
+- 'skin_temperature'
+- 'snow_depth'
+- 'soil_temperature_level_1'
+- 'soil_temperature_level_2'
+- 'soil_temperature_level_3'
+- 'soil_temperature_level_4'
+- 'soil_type'
+- 'surface_pressure'
+- 'volumetric_soil_water_layer_1'
+- 'volumetric_soil_water_layer_2'
+- 'volumetric_soil_water_layer_3'
+- 'volumetric_soil_water_layer_4'
+
+pressure_var:
+- 'geopotential'
+- 'relative_humidity'
+- 'specific_humidity'
+- 'temperature'
+- 'u_component_of_wind'
+- 'v_component_of_wind'
+
+pressure_levels:
+- '1000'
