@@ -43,3 +43,11 @@ class StationFileLoader():
             return station_files, station_ids
         else: # by default just return filenames
             return station_files
+        
+    def load_station_file(self, station_id: str) -> xr.Dataset:
+        filepath = os.path.join(get_env_var('DATA_HOME'),
+                                get_env_var('STATION_SUFFIX'),
+                                f"{station_id}")
+        
+        ds = xr.open_dataset(filepath)
+        return ds
