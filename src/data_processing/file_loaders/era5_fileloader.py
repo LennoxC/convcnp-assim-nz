@@ -65,5 +65,4 @@ class ERA5FileLoader:
             ValueError (f'Years should be int, str or list, not {type(years)}')
 
         filenames = self.get_filenames(mode, years)
-        print(filenames)
         return xr.open_mfdataset(filenames)
