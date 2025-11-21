@@ -7,7 +7,7 @@ In this repository, we experiment with using Convolutional Conditional Neural Pr
 ### Using this repository
 
 The entry points for this respository are as follows:
-- `src.utils.era5.main`: This module defines a command line tool for downloading ERA5 data from the [Climate Data Store](https://cds.climate.copernicus.eu/). 
+- `src.utils.era5_loader.main`: This module defines a command line tool for downloading ERA5 data from the [Climate Data Store](https://cds.climate.copernicus.eu/). 
 
 *There are more entry points to come.*
 

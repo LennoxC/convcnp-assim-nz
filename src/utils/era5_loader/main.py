@@ -7,7 +7,7 @@
 
 from src.config.env_loader import *
 from src.config.logging_config import setup_logging
-from src.utils.era5.cds_client import download_era5_data
+from src.utils.era5_loader.cds_client import download_era5_data
 from argparse import ArgumentParser
 import cdsapi
 import os
@@ -30,8 +30,8 @@ def get_commandline_args():
         help="End date for the data download in YYYYMMDD format.",
     )
     parser.add_argument(
-        "-o", "--output", type=str, dest="output", default=os.path.join(os.getenv("DATA_HOME"), "era5"), # default output path is DATA_HOME/era5
-        help="Output directory for the downloaded data. Default is DATA_HOME/era5.",
+        "-o", "--output", type=str, dest="output", default=os.path.join(os.getenv("DATA_HOME"), os.getenv("ERA5_SUFFIX")), # default output path is DATA_HOME/ERA5_SUFFIX
+        help="Output directory for the downloaded data. Default is DATA_HOME/ERA5_SUFFIX.",
     )
     parser.add_argument(
         "-p", "--parallel", action='store_true', dest="parallel", default=True,

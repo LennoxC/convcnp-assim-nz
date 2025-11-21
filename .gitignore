@@ -13,3 +13,6 @@ __pycache__/
 
 # VSCode settings
 launch.json
+
+# helper functions that I don't want to commit
+notebooks/eda/python_to_csv.ipynb
