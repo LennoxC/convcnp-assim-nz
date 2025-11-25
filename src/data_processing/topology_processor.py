@@ -63,7 +63,8 @@ class ProcessTopography(DataProcess):
             smoothed_elevations.data = scipy.ndimage.gaussian_filter(ds[ELEVATION].data, sigma=scales, mode='nearest')
 
             tpi_values = ds[ELEVATION] - smoothed_elevations
-            ds[f'{TOPOGRAPHIC_POSITION_INDEX}_ws{window_size}'] = tpi_values
+            # output strings will look something like 'tpi_ws0_1' for window size (ws) = 0.1 and TOPOGRAPHIC_POSITION_INDEX = 'tpi'
+            ds[f'{TOPOGRAPHIC_POSITION_INDEX}_ws{str(window_size).replace(".", "_")}'] = tpi_values
 
         return ds
 
