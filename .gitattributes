@@ -1,0 +1,2 @@
+*.ipynb linguist-vendored  # Exclude all Jupyter notebooks from language stats
+third_party/** linguist-vendored  # Exclude third-party libraries
