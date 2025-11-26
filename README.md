@@ -4,6 +4,10 @@ Data Assimilation in weather forecasting involves combining a model's previous f
 
 In this repository, we experiment with using Convolutional Conditional Neural Processes (ConvCNP) for data assimilation.
 
+### Note
+
+This repo is still under development.
+
 ### Using this repository
 
 The entry points for this respository are as follows:
