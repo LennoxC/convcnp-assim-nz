@@ -24,7 +24,7 @@ cycler==0.12.1
 dask==2025.11.0
 debugpy==1.8.17
 decorator==5.2.1
--e git+https://github.com/LennoxC/deepsensor.git@main#egg=deepsensor
+-e git+https://github.com/LennoxC/deepsensor.git@gpu-test#egg=deepsensor
 distributed==2025.11.0
 donfig==0.8.1.post1
 dotenv==0.9.9

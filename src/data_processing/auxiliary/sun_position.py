@@ -30,6 +30,8 @@ def get_sun_culmination(ds) -> xr.DataArray:
     lat = np.deg2rad(lats)
 
     # incidence angle formula
+    # returns: 'sine pf the solar elevation angle' at solar culmination
+    # incidence = sin(lat) * sin(decl) + cos(lat) * cos(decl)
     incidence_2d = (
         np.sin(lat) * np.sin(decl)
         + np.cos(lat) * np.cos(decl)
@@ -40,5 +42,7 @@ def get_sun_culmination(ds) -> xr.DataArray:
     incidence = incidence.transpose(TIME, LATITUDE, LONGITUDE)
 
     incidence = incidence.rename(SUN_CULMINATION)
+
+    incidence.attrs["units"] = "cos(zenith)"
 
     return incidence
