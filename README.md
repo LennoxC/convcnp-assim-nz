@@ -4,6 +4,14 @@ Data Assimilation in weather forecasting involves combining a model's previous f
 
 In this repository, we experiment with using Convolutional Conditional Neural Processes (ConvCNP) for data assimilation.
 
+### Notebooks
+Experiments are done in the notebooks folder. These are generally commited with results. Running the notebook should re-produce these results. At times, the notebooks folder may contain `debug` or `eda` folders, containing notebooks for these respective purposes.
+
+### Deepsensor
+Some modifications have been made to the deepsensor repository. There is a [fork of deepsensor here](https://github.com/LennoxC/deepsensor/tree/main). Pip is configured to import the main branch of this fork in `requirements.txt`.
+
+We anticipate that we may need to fork neuralprocesses in the future too.
+
 ### Using this repository
 
 The entry points for this respository are as follows:
@@ -16,8 +24,3 @@ Each entry point has corresponding documentation in the `docs` folder.
 ### Environmental Variables
 
 Python's `dotenv` package is used for managing environmental variables. A sample file `.env_template` is included in this repository for your convenience. After cloning this repo, you should rename this file to `.env`, and enter appropriate values for each variable.
-
-#### Required variables:
-- `DATA_HOME`: specify the base directory where model training data will be stored.
-
-**Variables required for other entry points are outlined in their corresponding documentation (`/docs`)**
