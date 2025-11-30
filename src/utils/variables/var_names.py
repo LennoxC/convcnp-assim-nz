@@ -9,6 +9,7 @@ WIND_DIRECTION = "wind_direction"
 WIND_U = "wind_u_component"
 WIND_V = "wind_v_component"
 SUN_CULMINATION = "sun_culmination"
+SUN_ANGLE = "sun_angle"
 
 
 # Auxiliary variables
