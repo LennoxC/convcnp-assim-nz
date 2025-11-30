@@ -11,6 +11,12 @@
 
 NOTEBOOK="$1"
 
+# Optional: port for tensorboard (default: 6006)
+TENSORBOARD_PORT=${2:-6006}
+
+# TensorBoard directory defaults to ./tb_logs/notebook_name
+TB_LOG_DIR=${3:-"$PWD/.tb_logs"}
+
 if [ -z "$NOTEBOOK" ]; then
   echo "Usage: $0 notebook.ipynb"
   exit 1
@@ -32,7 +38,6 @@ OUTNOTEBOOK="${OUT_DIR}/${NB_BASE}_executed.ipynb"
 
 echo "Running notebook in background using nohup..."
 echo "Output notebook: $OUTNOTEBOOK"
-echo "nohup log: nohup.out"
 
 # set notebook kernel log file (picked up by setup_logging via NOTEBOOK_LOG_FILE)
 # create a per-run timestamped log file in ./logs/
@@ -41,8 +46,8 @@ mkdir -p "$LOG_DIR"
 TS=$(date -u +%Y%m%dT%H%M%SZ)
 LOG_FILE="$LOG_DIR/${NB_BASE}_$TS.log"
 export NOTEBOOK_LOG_FILE="$LOG_FILE"
-echo "Notebook kernel logs: $LOG_FILE"
 echo "To follow notebook kernel logs: tail -f $LOG_FILE"
+
 nohup /home/crowelenn/niwa/convcnp-assim-nz/venv/bin/python -m nbconvert \
   --to notebook \
   --execute "$NOTEBOOK" \
@@ -54,3 +59,17 @@ nohup /home/crowelenn/niwa/convcnp-assim-nz/venv/bin/python -m nbconvert \
 PID=$!
 echo "Started background job with PID: $PID"
 echo "Monitor progress using: tail -f nohup.out"
+
+# start tensorboard in the background
+# ensure tensorboard isn't already running on the specified port
+if lsof -i :"$TENSORBOARD_PORT" >/dev/null ; then
+    echo "TensorBoard is already running on port $TENSORBOARD_PORT."
+    exit 0
+fi
+
+echo "Starting TensorBoard on port $TENSORBOARD_PORT, log dir: $TB_LOG_DIR"
+nohup /home/crowelenn/niwa/convcnp-assim-nz/venv/bin/tensorboard --logdir "$TB_LOG_DIR" --port $TENSORBOARD_PORT > tensorboard_nohup.out 2>&1 &
+TB_PID=$!
+echo "TensorBoard started with PID: $TB_PID"
+echo "To restart TensorBoard later, run:"
+echo "/home/crowelenn/niwa/convcnp-assim-nz/venv/bin/tensorboard --logdir \"$TB_LOG_DIR\" --port $TENSORBOARD_PORT"

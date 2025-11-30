@@ -23,3 +23,5 @@ notebooks/experiments/executed/
 nohup.out
 logs/
 .logs.out
+.tb_logs/
+tensorboard_nohup.out
