@@ -91,3 +91,51 @@ def batch_data_by_num_stations(tasks, batch_size=None):
                     batched_tasks[f'{num_stations}_{idx}'] = batched_tasks_copy[f'{num_stations}'][i:i+batch_size]
 
         return batched_tasks
+
+
+def train_epoch_dist(
+    model: ConvNP,
+    tasks: List[Task],
+    lr: float = 5e-5,
+    batch_size: int = None,
+    opt=None
+) -> List[float]:
+    import torch.optim as optim
+
+    if not isinstance(tasks, list):
+        tasks = list(tasks)
+
+    if opt is None:
+        opt = optim.Adam(model.model.parameters(), lr=lr)
+
+    def train_step(tasks):
+        if not isinstance(tasks, list):
+            tasks = [tasks]
+        opt.zero_grad()
+        task_losses = []
+        for task in tasks:
+            task_losses.append(model.loss_fn(task, normalise=True))
+        mean_batch_loss = B.mean(B.stack(*task_losses))
+        mean_batch_loss.backward()
+        opt.step()
+        return mean_batch_loss.detach().cpu().numpy()
+
+    #tasks = np.random.permutation(tasks)
+
+    if batch_size is not None:
+        n_batches = len(tasks) // batch_size  # Note that this will drop the remainder
+    else:
+        n_batches = len(tasks)
+
+    batch_losses = []
+    for batch_i in range(n_batches):
+        if batch_size is not None:
+            task = concat_tasks(
+                tasks[batch_i * batch_size : (batch_i + 1) * batch_size]
+            )
+        else:
+            task = tasks[batch_i]
+        batch_loss = train_step(task)
+        batch_losses.append(batch_loss)
+
+    return batch_losses
