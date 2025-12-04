@@ -18,6 +18,7 @@ launch.json
 # we might want to commit outputs one day
 notebooks/eda/python_to_csv.ipynb
 notebooks/experiments/executed/
+notebooks/*/executed/
 
 # logging things
 nohup.out
