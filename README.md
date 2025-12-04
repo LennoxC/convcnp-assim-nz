@@ -14,10 +14,12 @@ We anticipate that we may need to fork neuralprocesses in the future too.
 
 ### Using this repository
 
-The entry points for this respository are as follows:
+Notebooks can be run with `scripts/run_notebook_nohup.sh`. This automatically launches tensorboard, runs the notebook with nohup (which ignores the disconnect signal so you can power off your laptop while it runs on a GPU server), outputs logs, and saves the output notebook to the `executed` directory at the notebook location. Of course, while developing, you can interactively run notebooks too. This script just allows you to run notebooks in a more production-like environment.
+
+There are also some (or *one* currently) command like utilties:
 - `src.utils.era5_loader.main`: This module defines a command line tool for downloading ERA5 data from the [Climate Data Store](https://cds.climate.copernicus.eu/). 
 
-*There are more entry points to come.*
+*There are more entry points to come, maybe.*
 
 Each entry point has corresponding documentation in the `docs` folder.
 

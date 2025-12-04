@@ -1,18 +1,19 @@
 from deepsensor.data.utils import construct_x1x2_ds
 from src.utils.variables.coord_names import *
 
-# In the case when you have trained on a wider area and now want to apply the model on a cropped area,
-# you need to build new positional encodings for the cropped area while keeping the original ones for
-# the wider area.
-#
-# This function builds such positional encodings. 
-# - ds_aux: original auxiliary dataset (wider area)
-# - ds_aux_crop: cropped auxiliary dataset (smaller area)
-# - ds_aux_processed: processed original auxiliary dataset with positional encodings
-# - ds_aux_crop_processed: processed cropped auxiliary dataset with positional encodings
-# 'processed' referes to the deepsensor data processor which normalises the coordinates
-
 def build_cropped_auxiliary(ds_aux, ds_aux_crop, ds_aux_processed, ds_aux_crop_processed):
+    """
+    In the case when you have trained on a wider area and now want to apply the model on a cropped area,
+    you need to build new positional encodings for the cropped area while keeping the original ones for
+    the wider area.
+    This function builds such positional encodings. 
+    - ds_aux: original auxiliary dataset (wider area)
+    - ds_aux_crop: cropped auxiliary dataset (smaller area)
+    - ds_aux_processed: processed original auxiliary dataset with positional encodings
+    - ds_aux_crop_processed: processed cropped auxiliary dataset with positional encodings
+    'processed' referes to the deepsensor data processor which normalises the coordinates
+    """
+    
     x1x2_ds = construct_x1x2_ds(ds_aux_processed)
     x1x2_ds_crop = construct_x1x2_ds(ds_aux_crop_processed)
 

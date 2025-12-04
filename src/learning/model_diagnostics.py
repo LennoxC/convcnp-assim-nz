@@ -25,7 +25,9 @@ def count_model_parameters(model):
 
 
 def model_parameters_by_layer(model, indent=0):
-
+    """
+    Find the number of parameters of each layer in the model.
+    """
     if len(list(model.children())) == 0:
         layer_params = sum(p.numel() for p in model.parameters())
         print(f"{' ' * indent}Layer ({type(model)}): {layer_params} parameters")

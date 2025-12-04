@@ -1,58 +1,21 @@
 import torch
 import numpy as np
 
-# TODO: add an initialization strategy for the first layer weights
 
-"""
-Before using this function, model looks like this:
-UNet(
-  (before_turn_layers): ModuleList(
-    (0): Conv2d(14, 64, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
-    (1-4): 4 x Sequential(
-      (0): Conv2d(64, 64, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
-      (1): AvgPool2d(kernel_size=2, stride=2, padding=0)
-    )
-  )
-  (after_turn_layers): ModuleList(
-    (0): Conv2d(128, 64, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
-    (1-3): 3 x Sequential(
-      (0): Upsample(scale_factor=2.0, mode='bilinear')
-      (1): Conv2d(128, 64, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
-    )
-    (4): Sequential(
-      (0): Upsample(scale_factor=2.0, mode='bilinear')
-      (1): Conv2d(64, 64, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
-    )
-  )
-  (final_linear): Conv2d(64, 64, kernel_size=(1, 1), stride=(1, 1))
-)
-
-After the function, I get this which doesn't match:
-UNet(
-  (before_turn_layers): ModuleList(
-    (0): Conv2d(11, 64, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
-    (1-4): 4 x Sequential(
-      (0): Conv2d(64, 64, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
-      (1): AvgPool2d(kernel_size=2, stride=2, padding=0)
-    )
-  )
-  (after_turn_layers): ModuleList(
-    (0): Conv2d(128, 64, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
-    (1-3): 3 x Sequential(
-      (0): Upsample(scale_factor=2.0, mode='bilinear')
-      (1): Conv2d(128, 64, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
-    )
-    (4): Sequential(
-      (0): Upsample(scale_factor=2.0, mode='bilinear')
-      (1): Conv2d(64, 64, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
-    )
-  )
-  (final_linear): Conv2d(64, 64, kernel_size=(1, 1), stride=(1, 1))
-)
-"""
 
 def copy_unet_weights_except_first(model, old_model):
-    
+    """
+    This is to copy the weights from an old model's UNet to a new model's UNet,
+    except for the first layer in before_turn_layers which often has different input channels in a 
+    transfer learning scenario. I.e. more input channels in the new model than the old model.
+
+    Don't accidentally pass old_model, model into this function otherwise you'll be 
+    debugging for an hour like I did, and get really confused. Pass model, old_model.
+
+    Returns the new model with the copied weights, with the first layer weights randomly initialized.
+
+    # TODO: add an initialization strategy for the first layer weights
+    """
     old_unet = old_model.model.decoder.links[0]
     unet = model.model.decoder.links[0]
 
@@ -83,6 +46,11 @@ def copy_unet_weights_except_first(model, old_model):
 # Freeze all unet layers except the first before_turn_layer
 # unfreeze = False to freeze, True to unfreeze
 def freeze_unet_except_first(model, unfreeze=False):
+    """
+    Freeze all UNet layers except the first before_turn_layer.
+    Useful for transfer learning scenarios, when you first want to train the randomly initialized
+    first layer, before unfreezing the rest of the UNet for fine-tuning.
+    """
     unet = model.model.decoder.links[0]
 
     # freeze before_turn_layers except the first layer

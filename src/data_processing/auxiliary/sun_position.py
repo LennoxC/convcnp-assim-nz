@@ -27,6 +27,12 @@ def get_declination_angle(day_of_year: xr.DataArray) -> xr.DataArray:
     return decl
 
 def get_sun_culmination(ds) -> xr.DataArray:
+    """
+    This is the cosine of the zenith angle of the sun at solar culmination (solar noon).
+    I.e. the highest the sun gets in the sky that day at that latitude.
+    This is used in-place of 'day of year' encoding.
+    """
+
     times = ds[TIME]
     lats = ds[LATITUDE]
     lons = ds[LONGITUDE]
