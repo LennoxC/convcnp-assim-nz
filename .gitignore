@@ -14,5 +14,18 @@ __pycache__/
 # VSCode settings
 launch.json
 
-# helper functions that I don't want to commit
+# notebooks which shouldn't be committed.
+# we might want to commit outputs one day
 notebooks/eda/python_to_csv.ipynb
+notebooks/experiments/executed/
+notebooks/*/executed/
+
+# logging things
+nohup.out
+logs/
+.logs.out
+.tb_logs/
+tensorboard_nohup.out
+
+# system temp files? To do with university NFS
+.nfs*

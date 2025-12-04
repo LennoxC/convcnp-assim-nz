@@ -17,6 +17,7 @@ def compute_val_loss(model, val_tasks):
         val_losses.append(B.to_numpy(model.loss_fn(task, normalise=True)))
     return np.mean(val_losses)
 
+
 """
 Train for one epoch over many tasks, each with potentially different numbers of target points.
 Since ConvCNP does not support batching over different input sizes, we have to do this one at a time.
