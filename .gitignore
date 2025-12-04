@@ -19,7 +19,6 @@ launch.json
 notebooks/eda/python_to_csv.ipynb
 notebooks/experiments/executed/
 notebooks/*/executed/
-notebooks/*/executed/*
 
 # logging things
 nohup.out
