@@ -26,6 +26,8 @@ and then use deepsensor.train.train_epoch to train over these batches.
 
 This could be useful for fine-tuning a model which has already been trained with a large dataset using batching.
 The dataset with batching can be generated with `batch_data_by_num_stations`.
+
+As of experiment 2 - this is not used anywhere. I prefer the default deepsensor training loop with batching as this is much faster.
 """
 
 def train_epoch_many_targets(
