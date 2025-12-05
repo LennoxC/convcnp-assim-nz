@@ -1,7 +1,4 @@
 import torch.optim as optim
-import deepsensor
-from deepsensor.data.task import Task, concat_tasks
-from deepsensor.model.convnp import ConvNP
 import numpy as np
 import lab as B
 from typing import Dict, List
@@ -31,8 +28,8 @@ As of experiment 2 - this is not used anywhere. I prefer the default deepsensor 
 """
 
 def train_epoch_many_targets(
-    model: ConvNP,
-    tasks: List[Task],
+    model,
+    tasks,
     opt,
     batch_size: int = 1
 ) -> List[float]:
