@@ -205,7 +205,14 @@ class ProcessStations(DataProcess):
 
         ds = self.load_ds(vars, csv_file=csv_file, year_start=year_start, year_end=year_end)
 
-        return ds
+        if self.mode == 'netcdf':
+            df = ds.to_dataframe()
+            return df
+        elif self.mode == 'csv':
+            return ds
+        else:
+            raise ValueError(f"Unsupported mode: {self.mode}. Supported modes: 'netcdf', 'csv'.")
+        
     
     # create a dictionary mapping stations to station ids for each measured variable
     # variables could be things like 'temperature', 'humidity', etc.
