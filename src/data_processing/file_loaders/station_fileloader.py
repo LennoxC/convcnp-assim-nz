@@ -14,8 +14,13 @@ class StationFileLoader():
         - stations are stored as .nc files in the format {station_id}.nc
     """
 
-    def __init__(self):
-        pass
+    # mode defaults to 'netcdf' for backwards compatibility
+    def __init__(self, mode='netcdf'):
+
+        if mode not in ['netcdf', 'csv']:
+            raise ValueError(f"Unsupported mode: {mode}. Supported modes: 'netcdf', 'csv'.")
+
+        self.mode = mode
 
     def load_station_metadata(self):
         
@@ -44,10 +49,20 @@ class StationFileLoader():
         else: # by default just return filenames
             return station_files
         
-    def load_station_file(self, station_id: str) -> xr.Dataset:
-        filepath = os.path.join(get_env_var('DATA_HOME'),
+    def load_station_file(self, station_id : str = None, csv_file : str = None) -> xr.Dataset:
+
+        if self.mode == 'netcdf':
+            filepath = os.path.join(get_env_var('DATA_HOME'),
                                 get_env_var('STATION_SUFFIX'),
                                 f"{station_id}")
         
-        ds = xr.open_dataset(filepath)
-        return ds
+            ds = xr.open_dataset(filepath)
+            return ds
+        elif self.mode == 'csv':
+            filepath = os.path.join(get_env_var('DATA_HOME'),
+                                get_env_var('STATION_SUFFIX'),
+                                f"{csv_file}")
+        
+            df = pd.read_csv(filepath)
+            #ds = df.to_xarray() # still return as xarray Dataset for consistency, even though often csv is required eventually
+            return df
