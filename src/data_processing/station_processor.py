@@ -179,9 +179,7 @@ class ProcessStations(DataProcess):
             if standardise_coord_names:
                 if TIME in df.columns:
                     if year_start is not None and year_end is not None:
-                        print(f"Loaded CSV with length {len(df)}")
                         df = df[(df[TIME] >= f"{year_start}-01-01") & (df[TIME] <= f"{year_end}-12-31")]
-                        print(f"Loaded CSV with length {len(df)}")
                         #file = file.sel(time=slice(f"{year_start}-01-01", f"{year_end}-12-31"))
 
             else:
