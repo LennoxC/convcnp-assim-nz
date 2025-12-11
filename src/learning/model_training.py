@@ -68,7 +68,9 @@ def batch_data_by_num_stations(tasks, batch_size=None):
         batched_tasks = {}
         for task in tasks:
             num_stations = task['X_t'][0].shape[1]
-            if f'{num_stations}' not in batched_tasks.keys():
+            if num_stations == 0:
+                pass
+            elif f'{num_stations}' not in batched_tasks.keys():
                 batched_tasks[f'{num_stations}'] = [task]
             else:
                 batched_tasks[f'{num_stations}'].append(task)
