@@ -25,3 +25,4 @@ BAND_13 = 'B13'
 # Auxiliary variables
 ELEVATION = "elevation"
 TOPOGRAPHIC_POSITION_INDEX = "tpi"
+LAND_SEA_MASK = "lsm"
