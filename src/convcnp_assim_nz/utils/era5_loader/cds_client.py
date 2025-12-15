@@ -1,5 +1,5 @@
 import logging
-from src.config.env_loader import get_env_var
+from convcnp_assim_nz.config.env_loader import get_env_var
 import cdsapi
 import yaml
 import datetime

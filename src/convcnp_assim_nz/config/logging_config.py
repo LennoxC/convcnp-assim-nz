@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from src.config.env_loader import get_env_var
+from convcnp_assim_nz.config.env_loader import get_env_var
 
 # usage:
 # logger = logging.getLogger(__name__)

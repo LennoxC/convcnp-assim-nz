@@ -3,8 +3,8 @@
 # pass in a set of xarray indices (lat, lon, datetime) and get back the sun incidence angle at those points
 
 import xarray as xr
-from src.utils.variables.coord_names import *
-from src.utils.variables.var_names import *
+from convcnp_assim_nz.utils.variables.coord_names import *
+from convcnp_assim_nz.utils.variables.var_names import *
 import numpy as np
 
 def get_declination_angle(day_of_year: xr.DataArray) -> xr.DataArray:

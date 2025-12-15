@@ -1,5 +1,5 @@
 from deepsensor.data.utils import construct_x1x2_ds
-from src.utils.variables.coord_names import *
+from convcnp_assim_nz.utils.variables.coord_names import *
 
 def build_cropped_auxiliary(ds_aux, ds_aux_crop, ds_aux_processed, ds_aux_crop_processed):
     """

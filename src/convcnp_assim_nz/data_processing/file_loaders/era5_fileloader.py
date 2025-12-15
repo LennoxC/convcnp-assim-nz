@@ -5,8 +5,8 @@ import pandas as pd
 import xarray as xr
 from datetime import datetime
 
-from src.data_processing.utils_processor import DataProcess
-from src.config.env_loader import get_env_var
+from convcnp_assim_nz.data_processing.utils_processor import DataProcess
+from convcnp_assim_nz.config.env_loader import get_env_var
 
 class ERA5FileLoader:
 

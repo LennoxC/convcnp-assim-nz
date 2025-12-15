@@ -1,4 +1,4 @@
-#from src.utils.models.model_diagnostics import model_parameters_by_layer, model_dimensions_by_layer
+#from convcnp_assim_nz.utils.models.model_diagnostics import model_parameters_by_layer, model_dimensions_by_layer
 
 def find_model_structure(model):
     """

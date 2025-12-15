@@ -3,11 +3,11 @@ import os
 import numpy as np
 import scipy
 
-from src.data_processing.utils_processor import DataProcess
-from src.config.env_loader import get_env_var
-from src.data_processing.file_loaders.topology_fileloader import TopologyFileLoader
-from src.utils.variables.var_names import *
-from src.utils.variables.coord_names import *
+from convcnp_assim_nz.data_processing.utils_processor import DataProcess
+from convcnp_assim_nz.config.env_loader import get_env_var
+from convcnp_assim_nz.data_processing.file_loaders.topology_fileloader import TopologyFileLoader
+from convcnp_assim_nz.utils.variables.var_names import *
+from convcnp_assim_nz.utils.variables.coord_names import *
 
 class ProcessTopography(DataProcess):
     file_loader: TopologyFileLoader = None

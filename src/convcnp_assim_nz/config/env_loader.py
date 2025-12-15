@@ -1,7 +1,7 @@
 # handle loading environment variables from the .env file
 # call this module at the start of each script that needs environment variables
 # call like this:
-#   from src.config.env_loader import *
+#   from convcnp_assim_nz.config.env_loader import *
 #
 # an example .env file is provided as .env_template
 #

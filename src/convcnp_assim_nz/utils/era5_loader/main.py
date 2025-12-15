@@ -5,9 +5,9 @@
 # See https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=download#manage-licences
 # You will be prompted to do this the first time you attempt to use the API.
 
-from src.config.env_loader import *
-from src.config.logging_config import setup_logging
-from src.utils.era5_loader.cds_client import download_era5_data
+from convcnp_assim_nz.config.env_loader import *
+from convcnp_assim_nz.config.logging_config import setup_logging
+from convcnp_assim_nz.utils.era5_loader.cds_client import download_era5_data
 from argparse import ArgumentParser
 import cdsapi
 import os

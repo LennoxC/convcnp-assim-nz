@@ -6,11 +6,11 @@ import pandas as pd
 import xarray as xr
 from datetime import datetime
 
-from src.utils.variables.var_names import *
-from src.utils.variables.coord_names import *
-from src.data_processing.file_loaders.era5_fileloader import ERA5FileLoader
-from src.data_processing.utils_processor import DataProcess
-from src.config.env_loader import get_env_var
+from convcnp_assim_nz.utils.variables.var_names import *
+from convcnp_assim_nz.utils.variables.coord_names import *
+from convcnp_assim_nz.data_processing.file_loaders.era5_fileloader import ERA5FileLoader
+from convcnp_assim_nz.data_processing.utils_processor import DataProcess
+from convcnp_assim_nz.config.env_loader import get_env_var
 
 class ProcessERA5(DataProcess):
     file_loader: ERA5FileLoader = None

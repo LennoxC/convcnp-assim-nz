@@ -1,8 +1,8 @@
 import xarray as xr
 import os
-from src.data_processing.file_loaders.himawari8_fileloader import Himawari8FileLoader
-from src.utils.variables.var_names import *
-from src.utils.variables.coord_names import *
+from convcnp_assim_nz.data_processing.file_loaders.himawari8_fileloader import Himawari8FileLoader
+from convcnp_assim_nz.utils.variables.var_names import *
+from convcnp_assim_nz.utils.variables.coord_names import *
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
