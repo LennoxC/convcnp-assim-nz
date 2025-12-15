@@ -13,7 +13,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 
-ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
+ENV_PATH = Path(__file__).resolve().parents[3] / ".env"
+print(f"Loading environment variables from: {ENV_PATH}")
 load_dotenv(ENV_PATH, override=False)
 
 def get_env_var(var_name, default=None, *, return_default_flag=False):
