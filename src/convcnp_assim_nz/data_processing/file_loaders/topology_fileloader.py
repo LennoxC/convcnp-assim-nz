@@ -16,8 +16,11 @@ class TopologyFileLoader():
 
     def load_topology_file(self) -> xr.Dataset:
         
-        filename = os.path.join(get_env_var('DATA_HOME'),
-                   get_env_var('TOPOGRAPHY_SUFFIX'),
-                   get_env_var('TOPOGRAPHY_FILE'))
-        
+        if os.getenv("USE_ABSOLUTE_FILEPATHS") == "1":
+            filename = get_env_var('TOPOGRAPHY_PATH')
+        else:
+            filename = os.path.join(get_env_var('DATA_HOME'),
+                    get_env_var('TOPOGRAPHY_SUFFIX'),
+                    get_env_var('TOPOGRAPHY_FILE'))
+            
         return xr.open_dataset(filename)

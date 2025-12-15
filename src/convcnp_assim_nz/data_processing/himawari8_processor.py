@@ -32,7 +32,7 @@ class ProcessHimawari8:
         else:
             raise ValueError (f'Years should be int, str or list, not {type(years)}')
         
-        ds = ds.sel(time=ds.time.dt.year.isin(years))
+        #ds = ds.sel(time=ds.time.dt.year.isin(years))
 
         if standardise_var_names:
             ds = self.rename_variables(ds) # standardise variable names

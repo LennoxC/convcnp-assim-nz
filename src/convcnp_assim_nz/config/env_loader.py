@@ -39,3 +39,10 @@ def get_env_var(var_name, default=None, *, return_default_flag=False):
     if return_default_flag:
         return value, used_default
     return value
+
+def use_absolute_filepaths(mode: bool = False):
+    """
+    If mode is True, use absolute filepaths from environment variables.
+    If mode is False, use relative filepaths constructed from DATA_HOME and suffixes.
+    """
+    os.environ["USE_ABSOLUTE_FILEPATHS"] = "1" if mode else "0"
