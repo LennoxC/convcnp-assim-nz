@@ -49,6 +49,7 @@ def main():
     with ProgressBar():
         ds_h8 = xr.open_mfdataset(
             h8_files,
+            engine="h5netcdf",
             preprocess=preprocess,
             parallel=True,
         )

@@ -5,24 +5,24 @@ import scipy
 
 from convcnp_assim_nz.data_processing.utils_processor import DataProcess
 from convcnp_assim_nz.config.env_loader import get_env_var
-from convcnp_assim_nz.data_processing.file_loaders.topology_fileloader import TopologyFileLoader
+from convcnp_assim_nz.data_processing.file_loaders.topography_fileloader import TopographyFileLoader
 from convcnp_assim_nz.utils.variables.var_names import *
 from convcnp_assim_nz.utils.variables.coord_names import *
 
 class ProcessTopography(DataProcess):
-    file_loader: TopologyFileLoader = None
+    file_loader: TopographyFileLoader = None
 
     def __init__(self) -> None:
         super().__init__()
-        self.file_loader = TopologyFileLoader()
-
+        self.file_loader = TopographyFileLoader()
+    
     def load_ds(self, 
                 standardise_var_names: bool=True, 
                 standardise_coord_names: bool=True) -> xr.Dataset:
         # loading from the file system is abstracted to the file loader
         # different file structures can be handled there without changing this class (changes would be made only in the file loader)
         
-        ds = self.file_loader.load_topology_file()
+        ds = self.file_loader.load_topography_file()
         
         if standardise_var_names:
             ds = self.rename_variables(ds)
