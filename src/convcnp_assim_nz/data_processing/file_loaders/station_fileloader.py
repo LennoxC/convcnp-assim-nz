@@ -59,9 +59,13 @@ class StationFileLoader():
             ds = xr.open_dataset(filepath)
             return ds
         elif self.mode == 'csv':
-            filepath = os.path.join(get_env_var('DATA_HOME'),
+
+            if os.getenv("USE_ABSOLUTE_FILEPATHS") == "0":
+                filepath = os.path.join(get_env_var('DATA_HOME'),
                                 get_env_var('STATION_SUFFIX'),
                                 f"{csv_file}")
+            else:
+                filepath = os.path.join(get_env_var('STATIONS_PATH'), csv_file)
         
             df = pd.read_csv(filepath)
             #ds = df.to_xarray() # still return as xarray Dataset for consistency, even though often csv is required eventually
