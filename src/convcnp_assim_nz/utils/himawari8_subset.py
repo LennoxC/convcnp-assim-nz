@@ -39,12 +39,9 @@ def main():
     )
 
     # where to save the zarr
-    save_location = "/esi/project/niwa00004/crowelenn/data/himawari8_2017/h8.zarr"
+    save_location = "/esi/project/niwa00004/crowelenn/data/himawari8_2017/himawari8.zarr"
 
     h8_files = glob.glob(pattern)
-
-    nzra_processor = ProcessNZRA()
-    dset_nzra = nzra_processor.load_ds([2017])
 
     with ProgressBar():
         ds_h8 = xr.open_mfdataset(
@@ -56,7 +53,6 @@ def main():
 
     print("Saving Himawari-8 data to zarr...")
     ds_h8.to_zarr(save_location)
-
 
 if __name__ == "__main__":
     main()

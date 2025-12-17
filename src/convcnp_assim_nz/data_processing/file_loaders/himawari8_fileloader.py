@@ -16,6 +16,8 @@ class Himawari8FileLoader:
             # if the filepath contains a * then use open_mfdataset
             if "*" in home_path:
                 ds = xr.open_mfdataset(home_path, parallel=True)
+            else: # otherwise, assume the filepath is a zarr store
+                ds = xr.open_zarr(home_path)
 
         else:
             # home path for Himawari-8 data zarr store. Environmental variable HIMAWARI8_SUFFIX should include '.zarr' if required

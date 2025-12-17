@@ -49,7 +49,7 @@ class ERA5FileLoader:
             years (list): specific years, retrieves all if set to None
         """
 
-        if mode not in ['surface', 'pressure']:
+        if mode not in ['surface', 'pressure'] and mode is not None:
             raise ValueError(f'mode must be "surface" or "pressure", not {mode}')
 
         # convert year to the correct format
@@ -64,5 +64,12 @@ class ERA5FileLoader:
         else:
             ValueError (f'Years should be int, str or list, not {type(years)}')
 
-        filenames = self.get_filenames(mode, years)
-        return xr.open_mfdataset(filenames)
+        if os.getenv("USE_ABSOLUTE_FILEPATHS") == "0":
+            if mode is None:
+                raise ValueError("mode must be specified when USE_ABSOLUTE_FILEPATHS is False")
+            
+            filenames = self.get_filenames(mode, years)
+            return xr.open_mfdataset(filenames)
+        else:
+            zarr_file = get_env_var("ERA5_PATH")
+            return xr.open_zarr(zarr_file)

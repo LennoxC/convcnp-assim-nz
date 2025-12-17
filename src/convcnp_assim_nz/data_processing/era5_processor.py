@@ -23,7 +23,7 @@ class ProcessERA5(DataProcess):
     # different file structures can be handled there without changing this class (changes would be made only in the file loader)
 
     def load_ds(self, 
-                mode: Literal['surface', 'pressure'],
+                mode: Literal['surface', 'pressure'] = None,
                 years: List=None,
                 standardise_var_names: bool=True,
                 standardise_coord_names: bool=True,
@@ -60,13 +60,22 @@ class ProcessERA5(DataProcess):
         The standard names are defined as strings in src/utils/variables/var_names.py
         """
         rename_dict = {}
+        
+        # iterate through variables and rename to standard names
         for var in ds.data_vars:
-            if var == 't2m' or var == 't':
+            if var == "t2m" or var == "t" or var == "temperature":
                 rename_dict[var] = TEMPERATURE
-            elif var == 'u10' or var == 'u':
+            if var == "u10" or var == "u" or var == "u_component_of_wind":
                 rename_dict[var] = WIND_U
-            elif var == 'v10' or var == 'v':
+            if var == "v10" or var == "v" or var == "v_component_of_wind":
                 rename_dict[var] = WIND_V
+            if var == "specific_humidity":
+                rename_dict[var] = HUMIDITY
+            if var == "geopotential":
+                rename_dict[var] = GEOPOTENTIAL
+            if var == "vertical_velocity":
+                rename_dict[var] = VERTICAL_VELOCITY
+            
         ds = ds.rename(rename_dict)
         return ds
     

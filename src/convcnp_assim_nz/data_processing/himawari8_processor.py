@@ -16,7 +16,8 @@ class ProcessHimawari8:
     def load_ds(self, 
                 years: list,
                 standardise_var_names: bool=True,
-                standardise_coord_names: bool=True) -> xr.Dataset:
+                standardise_coord_names: bool=True,
+                variables = [BAND_3, BAND_9, BAND_13]) -> xr.Dataset:
         """ Load Himawari-8 dataset from file """
         ds = self.file_loader.load_himawari8_dataset()
         
@@ -32,7 +33,9 @@ class ProcessHimawari8:
         else:
             raise ValueError (f'Years should be int, str or list, not {type(years)}')
         
-        #ds = ds.sel(time=ds.time.dt.year.isin(years))
+        ds = ds.sel(time=ds.time.dt.year.isin(years))
+
+        ds = ds[variables] # select only specified variables, by default this is bands 3, 9 and 13
 
         if standardise_var_names:
             ds = self.rename_variables(ds) # standardise variable names
@@ -41,6 +44,7 @@ class ProcessHimawari8:
             ds = self.rename_coords(ds) # standardise coordinate names
         
         return ds
+    
     
     def rename_coords(self, ds) -> xr.Dataset:
         """
