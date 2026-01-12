@@ -26,6 +26,7 @@ logs/
 .logs.out
 .tb_logs/
 tensorboard_nohup.out
+.tensorboard/
 
 # system temp files? To do with university NFS
 .nfs*# pixi environments

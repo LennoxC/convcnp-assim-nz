@@ -4,7 +4,7 @@ import lab as B
 from typing import Dict, List
 from tqdm import tqdm
 import random
-from deepsensor.data.task import concat_tasks
+#from deepsensor.data.task import concat_tasks
 import math
 
 # TODO: Investigate using torch.amp.GradScaler for mixed precision training
@@ -93,8 +93,16 @@ def train_epoch_pickled(
             tasks = [tasks]
         opt.zero_grad()
         task_losses = []
+
+        task_counter_debug = 0
+
         for task in tasks:
-            task_losses.append(model.loss_fn(task, normalise=True))
+            task_losses.append(model.loss_fn(task, normalise=True)) # error is thrown here
+
+            # debug print
+            task_counter_debug += 1
+            print(f'Trained on task {task_counter_debug} / {len(tasks)}')
+
         mean_batch_loss = B.mean(B.stack(*task_losses))
         mean_batch_loss.backward()
         opt.step()
@@ -122,20 +130,13 @@ def train_epoch_pickled(
                 tasks.append(task)
 
         if batch_size is not None:
-            task = concat_tasks(tasks)
+            task = concat_tasks_custom(tasks)
         else:
             task = tasks[batch_i]
         
         batch_loss = train_step(task)
 
-        # zero the gradient at the start of the batch
-        opt.zero_grad()
-
-        mean_batch_loss = B.mean(B.stack(*batch_loss))
-        mean_batch_loss.backward()
-        opt.step()
-
-        batch_losses.append(mean_batch_loss.detach().cpu().numpy())
+        batch_losses.append(batch_loss)
         
     return batch_losses
 
@@ -167,3 +168,132 @@ def batch_data_by_num_stations(tasks, batch_size=None):
                     batched_tasks[f'{num_stations}_{idx}'] = batched_tasks_copy[f'{num_stations}'][i:i+batch_size]
 
         return batched_tasks
+
+# the default deepsensor concat_tasks function does not handle correct batching 
+# of Y_t_aux. This custom function version concatenates Y_t_aux correctly.
+
+from deepsensor.data.task import Task
+import deepsensor
+import copy
+
+def concat_tasks_custom(tasks: List[Task], multiple: int = 1) -> Task:
+    """Concatenate a list of tasks into a single task containing multiple batches.
+
+    ..
+
+    Todo:
+        - Consider moving to ``nps.py`` as this leverages ``neuralprocesses``
+          functionality.
+        - Raise error if ``aux_t`` values passed (not supported I don't think)
+
+    Args:
+        tasks (List[:class:`deepsensor.data.task.Task`:]):
+            List of tasks to concatenate into a single task.
+        multiple (int, optional):
+            Contexts are padded to the smallest multiple of this number that is
+            greater than the number of contexts in each task. Defaults to 1
+            (padded to the largest number of contexts in the tasks). Setting
+            to a larger number will increase the amount of padding but decrease
+            the range of tensor shapes presented to the model, which simplifies
+            the computational graph in graph mode.
+
+    Returns:
+        :class:`~.data.task.Task`: Task containing multiple batches.
+
+    Raises:
+        ValueError:
+            If the tasks have different numbers of target sets.
+        ValueError:
+            If the tasks have different numbers of targets.
+        ValueError:
+            If the tasks have different types of target sets (gridded/
+            non-gridded).
+    """
+    if len(tasks) == 1:
+        return tasks[0]
+
+    for i, task in enumerate(tasks):
+        if "numpy_mask" in task["ops"] or "nps_mask" in task["ops"]:
+            raise ValueError(
+                "Cannot concatenate tasks that have had NaNs masked. "
+                "Masking will be applied automatically after concatenation."
+            )
+        if "target_nans_removed" not in task["ops"]:
+            task = task.remove_target_nans()
+        if "batch_dim" not in task["ops"]:
+            task = task.add_batch_dim()
+        if "float32" not in task["ops"]:
+            task = task.cast_to_float32()
+        tasks[i] = task
+
+    # Assert number of target sets equal
+    n_target_sets = [len(task["Y_t"]) for task in tasks]
+    if not all([n == n_target_sets[0] for n in n_target_sets]):
+        raise ValueError(
+            f"All tasks must have the same number of target sets to concatenate: got {n_target_sets}. "
+        )
+    n_target_sets = n_target_sets[0]
+
+    for target_set_i in range(n_target_sets):
+        # Raise error if target sets have different numbers of targets across tasks
+        n_target_obs = [task["Y_t"][target_set_i].size for task in tasks]
+        if not all([n == n_target_obs[0] for n in n_target_obs]):
+            raise ValueError(
+                f"All tasks must have the same number of targets to concatenate: got {n_target_obs}. "
+                "To train with Task batches containing differing numbers of targets, "
+                "run the model individually over each task and average the losses."
+            )
+
+        # Raise error if target sets are different types (gridded/non-gridded) across tasks
+        if isinstance(tasks[0]["X_t"][target_set_i], tuple):
+            for task in tasks:
+                if not isinstance(task["X_t"][target_set_i], tuple):
+                    raise ValueError(
+                        "All tasks must have the same type of target set (gridded or non-gridded) "
+                        f"to concatenate. For target set {target_set_i}, got {type(task['X_t'][target_set_i])}."
+                    )
+
+    # For each task, store list of tuples of (x_c, y_c) (one tuple per context set)
+    contexts = []
+    for i, task in enumerate(tasks):
+        contexts_i = list(zip(task["X_c"], task["Y_c"]))
+        contexts.append(contexts_i)
+
+    # List of tuples of merged (x_c, y_c) along batch dim with padding
+    # (up to the smallest multiple of `multiple` greater than the number of contexts in each task)
+    merged_context = [
+        deepsensor.backend.nps.merge_contexts(
+            *[context_set for context_set in contexts_i], multiple=multiple
+        )
+        for contexts_i in zip(*contexts)
+    ]
+
+    merged_task = copy.deepcopy(tasks[0])
+
+    # Convert list of tuples of (x_c, y_c) to list of x_c and list of y_c
+    merged_task["X_c"] = [c[0] for c in merged_context]
+    merged_task["Y_c"] = [c[1] for c in merged_context]
+    merged_task["Y_t_aux"] = B.concat(*[t["Y_t_aux"] for t in tasks]) # concatenate aux targets for all targets
+
+    # This assumes that all tasks have the same number of targets
+    for i in range(n_target_sets):
+        if isinstance(tasks[0]["X_t"][i], tuple):
+            # Target set is gridded with tuple of coords for `X_t`
+            merged_task["X_t"][i] = (
+                B.concat(*[t["X_t"][i][0] for t in tasks], axis=0),
+                B.concat(*[t["X_t"][i][1] for t in tasks], axis=0),
+            )
+        else:
+            # Target set is off-the-grid with tensor for `X_t`
+            merged_task["X_t"][i] = B.concat(*[t["X_t"][i] for t in tasks], axis=0)
+        merged_task["Y_t"][i] = B.concat(*[t["Y_t"][i] for t in tasks], axis=0)
+
+    merged_task["time"] = [t["time"] for t in tasks]
+
+    merged_task = Task(merged_task)
+
+    # Apply masking
+    merged_task = merged_task.mask_nans_numpy()
+    merged_task = merged_task.mask_nans_nps()
+
+    return merged_task

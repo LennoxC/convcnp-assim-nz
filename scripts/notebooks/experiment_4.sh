@@ -17,5 +17,7 @@ pixi run python -m nbconvert \
   --to notebook \
   --execute "./notebooks/experiment4/experiment4_nzra_target.ipynb" \
   --output "experiment4_nzra_target_executed.ipynb" \
-  --output-dir "./notebooks/experiment4/executed/" \
+  --output-dir "./notebooks/experiment4/executed" \
   --ExecutePreprocessor.timeout=-1
+
+
