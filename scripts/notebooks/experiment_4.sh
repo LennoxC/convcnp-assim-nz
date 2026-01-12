@@ -10,14 +10,18 @@
 mkdir -p "${PBS_O_WORKDIR}/logs"
 exec &> "${PBS_O_WORKDIR}/logs/${PBS_JOBID%.*}-${PBS_JOBNAME%.*}.log"
 
-# check the output directory works (needs fixing I believe)
 echo "Starting ERA5 processing job."
 cd /home/crowelenn/dev/convcnp-assim-nz
-pixi run python -m nbconvert \
+
+export DEVELOPMENT_ENVIRONMENT="1"
+export DATASET_GENERATION="0"
+
+pixi run -e gpu python -m nbconvert \
   --to notebook \
   --execute "./notebooks/experiment4/experiment4_nzra_target.ipynb" \
   --output "experiment4_nzra_target_executed.ipynb" \
   --output-dir "./notebooks/experiment4/executed" \
-  --ExecutePreprocessor.timeout=-1
+  --ExecutePreprocessor.timeout=-1 \
+  --ExecutePreprocessor.kernel_name=convcnp-gpu
 
 
