@@ -13,8 +13,8 @@ exec &> "${PBS_O_WORKDIR}/logs/${PBS_JOBID%.*}-${PBS_JOBNAME%.*}.log"
 echo "Starting ERA5 processing job."
 cd /home/crowelenn/dev/convcnp-assim-nz
 
-export DEVELOPMENT_ENVIRONMENT="1"
-export DATASET_GENERATION="0"
+export DEVELOPMENT_ENVIRONMENT="0"
+export DATASET_GENERATION="1"
 
 pixi run -e gpu python -m nbconvert \
   --to notebook \
