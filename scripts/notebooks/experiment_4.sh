@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#PBS -l select=1:ncpus=8:mem=50gb:ngpus=1
+#PBS -l select=1:ncpus=8:mem=100gb:ngpus=1
 #PBS -l walltime=01:00:00
 #PBS -q a100_devq
 #PBS -koed
@@ -13,8 +13,8 @@ exec &> "${PBS_O_WORKDIR}/logs/${PBS_JOBID%.*}-${PBS_JOBNAME%.*}.log"
 echo "Starting ERA5 processing job."
 cd /home/crowelenn/dev/convcnp-assim-nz
 
-export DEVELOPMENT_ENVIRONMENT="0"
-export DATASET_GENERATION="1"
+export DEVELOPMENT_ENVIRONMENT="1"
+export DATASET_GENERATION="0"
 
 pixi run -e gpu python -m nbconvert \
   --to notebook \
