@@ -10,11 +10,11 @@
 mkdir -p "${PBS_O_WORKDIR}/logs"
 exec &> "${PBS_O_WORKDIR}/logs/${PBS_JOBID%.*}-${PBS_JOBNAME%.*}.log"
 
-echo "Starting ERA5 processing job."
+echo "Running experiment 4, training, GPU mode."
 cd /home/crowelenn/dev/convcnp-assim-nz
 
 export DEVELOPMENT_ENVIRONMENT="1"
-export DATASET_GENERATION="0"
+export DATASET_GENERATION="0" # leave this as 0
 
 pixi run -e gpu python -m nbconvert \
   --to notebook \
@@ -23,5 +23,3 @@ pixi run -e gpu python -m nbconvert \
   --output-dir "./notebooks/experiment4/executed" \
   --ExecutePreprocessor.timeout=-1 \
   --ExecutePreprocessor.kernel_name=convcnp-gpu
-
-

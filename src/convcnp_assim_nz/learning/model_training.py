@@ -15,21 +15,60 @@ def compute_val_loss(model, val_tasks):
         val_losses.append(B.to_numpy(model.loss_fn(task, normalise=True)))
     return np.mean(val_losses)
 
-def compute_val_loss_pickled(model, val_task_dir):
+def compute_val_loss_pickled(model, val_task_dir, batch_size: int = None, epoch: int = None, repeat_sampling: int = None):
     import pickle
     import os
+    import torch
 
     val_losses = []
 
+    def val_step(tasks):
+        if not isinstance(tasks, list):
+            tasks = [tasks]
+        
+        with torch.no_grad():
+            task_losses = []
+
+            for task in tasks:
+                task_losses.append(model.loss_fn(task, normalise=True))
+
+            mean_batch_loss = B.mean(B.stack(*task_losses))
+        
+        return mean_batch_loss.detach().cpu().numpy()
+
     # list all tasks in val_task_dir
-    val_task_files = [f for f in os.listdir(val_task_dir) if f.endswith('.pkl')]
+    if epoch is not None and repeat_sampling is not None:
+        file_ext = epoch % repeat_sampling
+        val_task_files = [f for f in os.listdir(val_task_dir) if f.endswith(f'_{file_ext}.pkl')]
+    else:
+        val_task_files = [f for f in os.listdir(val_task_dir) if f.endswith('.pkl')]
 
-    for task_file in val_task_files:
-        with open(os.path.join(val_task_dir, task_file), 'rb') as f:
-            task = pickle.load(f)
-            val_losses.append(B.to_numpy(model.loss_fn(task, normalise=True)))
+    if batch_size is not None:
+        n_batches = len(val_task_files) // batch_size  # Note that this will drop the remainder
+    else:
+        n_batches = len(val_task_files)
 
+    for batch_i in tqdm(range(n_batches)):
+
+        # load the first batch_size tasks from val_task_files
+        tasks = []
+        for b in range(batch_size):
+            task_file = val_task_files[batch_i * batch_size + b]
+            with open(os.path.join(val_task_dir, task_file), 'rb') as f:
+                task = pickle.load(f)
+                tasks.append(task)
+
+        if batch_size is not None:
+            task = concat_tasks_custom(tasks)
+        else:
+            task = tasks[batch_i]
+        
+        batch_loss = val_step(task)
+
+        val_losses.append(batch_loss)
+        
     return np.mean(val_losses)
+
 
 """
 Train for one epoch over many tasks, each with potentially different numbers of target points.
@@ -82,7 +121,9 @@ def train_epoch_pickled(
     model,
     train_task_dir,
     opt,
-    batch_size: int = 1
+    batch_size: int = 1,
+    epoch: int = None,
+    repeat_sampling: int = None
     ):
 
     import pickle
@@ -109,8 +150,16 @@ def train_epoch_pickled(
         return mean_batch_loss.detach().cpu().numpy()
 
     # list all tasks in train_task_dir
-    train_task_files = [f for f in os.listdir(train_task_dir) if f.endswith('.pkl')]
-
+    # when epoch is specified, this indicates we are using each timestep only once per epoch.
+    #    As multiple tasks were generated per timestep, we filter the task files to only those
+    #    corresponding to the current epoch. This helps mitigate immediate overfitting when using
+    #    small datasets.
+    if epoch is not None and repeat_sampling is not None:
+        file_ext = epoch % repeat_sampling
+        train_task_files = [f for f in os.listdir(train_task_dir) if f.endswith(f'_{file_ext}.pkl')]
+    else:
+        train_task_files = [f for f in os.listdir(train_task_dir) if f.endswith('.pkl')]
+    
     train_task_files = np.random.permutation(train_task_files)
 
     if batch_size is not None:
@@ -297,3 +346,108 @@ def concat_tasks_custom(tasks: List[Task], multiple: int = 1) -> Task:
     merged_task = merged_task.mask_nans_nps()
 
     return merged_task
+
+def return_sample_predictions(era5_date_ds, h8_date_ds, nzra_date_ds, nzra_ds, stations_date_df, ds_aux_processed, ds_aux_coarse_processed, val_date, data_processor, epoch, model, target, padding = 200, subtitle_text="Placeholder subtitle text"):
+    
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.basemap import Basemap
+    from deepsensor.data.loader import TaskLoader
+    from convcnp_assim_nz.utils.variables.coord_names import LATITUDE, LONGITUDE
+
+    era5_date_processed, h8_date_processed, nzra_processed, stations_date_processed = data_processor([era5_date_ds, h8_date_ds, nzra_date_ds, stations_date_df])
+
+    temp_task_loader = TaskLoader(
+        context = [h8_date_processed, stations_date_processed, era5_date_processed, ds_aux_coarse_processed], 
+        target = nzra_processed,
+        aux_at_targets = ds_aux_processed)
+    
+    # the task for inference/prediction
+    task = temp_task_loader(val_date, context_sampling=["all", "all", "all", "all"], target_sampling=["all"])
+
+    pred = model.predict(task, X_t=nzra_ds[[LATITUDE, LONGITUDE]])
+
+    # Number of annotated grid points
+    N_ANN = 5
+
+    fig, ax = plt.subplots(2, 2, figsize=(8, 8))
+    fig.suptitle(f'Epoch {epoch} Predictions for {val_date}', fontsize=18)
+    fig.text(0.5, 0.94, subtitle_text, ha='center', fontsize=12, color='gray')
+
+    # --- DATA EXTRACTION ---
+    truth_field = nzra_ds[target].sel(time=val_date).values
+    pred_mean  = pred[target]["mean"].isel(time=0).values
+    pred_std   = pred[target]["std"].isel(time=0).values
+
+    Ny, Nx = truth_field.shape
+
+    # add padding to the annotated points
+    Ny = Ny - padding//2
+    Nx = Nx - padding//2
+
+    # Shared colour scale across truth + prediction
+    vmin = min(truth_field.min(), pred_mean.min())
+    vmax = max(truth_field.max(), pred_mean.max())
+
+    # Annotated grid points
+    ys = np.linspace(padding//2, Ny - 1, N_ANN, dtype=int)
+    xs = np.linspace(padding//2, Nx - 1, N_ANN, dtype=int)
+    annot_points = [(y, x) for y in ys for x in xs]
+
+    # --- TOP LEFT: NZRA temperature ---
+    im0 = ax[0, 0].imshow(truth_field, origin='lower', vmin=vmin, vmax=vmax)
+    ax[0, 0].set_title(f"NZRA {target}")
+    fig.colorbar(im0, ax=ax[0, 0], shrink=0.7)
+    for y, x in annot_points:
+        ax[0, 0].text(x, y, f"{truth_field[y,x]:.1f}", fontsize=7,
+                    color='white', ha='center', va='center')
+
+    # --- TOP RIGHT: stations ---
+    ax[0, 1].set_aspect('equal', adjustable='box')
+
+    m = Basemap(
+        projection='merc',
+        llcrnrlat=nzra_date_ds[LATITUDE].min().item(),
+        urcrnrlat=nzra_date_ds[LATITUDE].max().item(),
+        llcrnrlon=nzra_date_ds[LONGITUDE].min().item(),
+        urcrnrlon=nzra_date_ds[LONGITUDE].max().item(),
+        resolution='i',
+        ax=ax[0, 1]
+    )
+
+    m.drawcoastlines()
+    m.drawcountries()
+
+    df_day = stations_date_df.reset_index().loc[
+        lambda df: df['time'] == val_date
+    ]
+
+    x, y = m(df_day['lon'].values, df_day['lat'].values)
+    sc = m.scatter(x, y,
+                c=df_day[target].values,
+                cmap='coolwarm',
+                marker='o',
+                edgecolor='k',
+                s=80)
+
+    ax[0, 1].set_title("Station Observations")
+    fig.colorbar(sc, ax=ax[0, 1], shrink=0.7)
+
+    # --- BOTTOM LEFT: PRED MEAN ---
+    im2 = ax[1, 0].imshow(pred_mean, origin='lower', vmin=vmin, vmax=vmax)
+    ax[1, 0].set_title(f"ConvCNP {target} prediction (mean)")
+    fig.colorbar(im2, ax=ax[1, 0], shrink=0.7)
+    for y, x in annot_points:
+        ax[1, 0].text(x, y, f"{pred_mean[y,x]:.1f}", fontsize=7,
+                    color='white', ha='center', va='center')
+
+    # --- BOTTOM RIGHT: PRED STD ---
+    im3 = ax[1, 1].imshow(pred_std, origin='lower')
+    ax[1, 1].set_title("ConvCNP Standard Deviation")
+    fig.colorbar(im3, ax=ax[1, 1], shrink=0.7)
+    for y, x in annot_points:
+        ax[1, 1].text(x, y, f"{pred_std[y,x]:.2f}", fontsize=6,
+                    color='white', ha='center', va='center')
+
+    plt.tight_layout()
+
+    return fig
