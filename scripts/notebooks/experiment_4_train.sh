@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #PBS -l select=1:ncpus=8:mem=100gb:ngpus=1
-#PBS -l walltime=01:00:00
-#PBS -q a100_devq
+#PBS -l walltime=48:00:00
+#PBS -q a100q
 #PBS -koed
 #PBS -e /dev/null
 #PBS -o /dev/null

@@ -123,11 +123,16 @@ def train_epoch_pickled(
     opt,
     batch_size: int = 1,
     epoch: int = None,
-    repeat_sampling: int = None
+    repeat_sampling: int = None,
+    use_grad_clip: bool = False, 
+    grad_clip_value: float = 0.0
     ):
 
     import pickle
     import os
+
+    if use_grad_clip:
+        from torch.nn.utils import clip_grad_norm_
 
     def train_step(tasks):
         if not isinstance(tasks, list):
@@ -146,6 +151,10 @@ def train_epoch_pickled(
 
         mean_batch_loss = B.mean(B.stack(*task_losses))
         mean_batch_loss.backward()
+
+        if use_grad_clip:
+            clip_grad_norm_(model.model.parameters(), grad_clip_value)
+
         opt.step()
         return mean_batch_loss.detach().cpu().numpy()
 
