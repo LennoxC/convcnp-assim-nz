@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-DIR_BASE=${1:-"/esi/project/niwa00004/crowelenn/data/pickle"}
+DIR_BASE=${1:-"/esi/project/niwa00004/crowelenn/data/pickle/"}
 
 # check the user really wants to delete these files
 read -p "Are you sure you want to delete all datasets in ${DIR_BASE}? This action cannot be undone. (y/n) " -n 1 -r
