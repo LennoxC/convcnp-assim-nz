@@ -7,6 +7,7 @@ from convcnp_assim_nz.utils.variables.coord_names import *
 import os
 import pandas as pd
 import xarray as xr
+import numpy as np
 
 # Important functions to copy over:
 # get_metadata_df()
@@ -31,59 +32,6 @@ class ProcessStations(DataProcess):
             self.stations_metadata = self.file_loader.load_station_metadata()
         else: 
             self.stations_metadata = None  # metadata not used in 'csv' mode
-        #self.stations_by_variable = self.paths_of_stations_with_variable()
-
-    '''
-    def load_ds(self, vars, year_start=None, year_end=None, standarise_var_names: bool=True, standardise_coord_names: bool=True) -> xr.Dataset:
-        """ 
-        Load only stations which contain the specified variables (vars) in the specified time range (year_start to year_end).
-        Form a new xarray Dataset by the station coordinates (continuous) and timestamp, with the variable values as data.
-        """
-
-        station_files, ids = self.file_loader.get_station_filenames(returnId=True)
-
-        ds_list = []
-        for file, id in zip(station_files, ids):
-            ds_station = self.file_loader.load_station_file(file)
-
-            if standarise_var_names:
-                ds_station = self.rename_variables(ds_station)
-
-            # check if the station contains all the requested variables
-            if all(var in ds_station.data_vars for var in vars):
-                # filter by time range if specified
-                if year_start is not None and year_end is not None:
-                    ds_station = ds_station.sel(time=slice(f"{year_start}-01-01", f"{year_end}-12-31"))
-
-                # select only the requested variables
-                ds_station = ds_station[vars]
-
-                # add station coordinates as new dimensions
-                try:
-                    station_info = self.get_station_info_by_id(int(id))
-                except:
-                    # if station info not found, skip this station
-                    print(f"Skipping {id}")
-                    continue
-                
-                ds_station = ds_station.expand_dims({LATITUDE: [station_info['latitude']],
-                                                    LONGITUDE: [station_info['longitude']]})
-                
-                ds_station = ds_station.assign(station_id=int(id))
-
-                ds_list.append(ds_station)
-
-        # combine all station datasets into one
-        if ds_list:
-            ds_combined = xr.concat(ds_list, dim='station')
-        else:
-            ds_combined = xr.Dataset()  # return empty dataset if no stations found
-
-        if standardise_coord_names:
-            ds_combined = self.rename_coords(ds_combined) # standardise coordinate names
-
-        return ds_combined
-    '''
 
     def load_ds(
             self,
@@ -245,8 +193,15 @@ class ProcessStations(DataProcess):
             return ds
         
         elif self.mode == 'csv':
-            ds[TEMPERATURE] = (ds['MAX_TEMP'] + ds['MIN_TEMP']) / 2.0
-            ds = ds.drop(columns=['MAX_TEMP', 'MIN_TEMP'])
+            if 'MAX_TEMP' in ds.columns and 'MIN_TEMP' in ds.columns:
+                ds[TEMPERATURE] = (ds['MAX_TEMP'] + ds['MIN_TEMP']) / 2.0
+                ds = ds.drop(columns=['MAX_TEMP', 'MIN_TEMP'])
+
+            if 'SPEED' in ds.columns and 'DIRECTION' in ds.columns:
+                ds[WIND_U] = ds['SPEED'] * -np.cos(np.deg2rad(ds['DIRECTION']))
+                ds[WIND_V] = ds['SPEED'] * -np.sin(np.deg2rad(ds['DIRECTION']))
+                ds = ds.drop(columns=['SPEED', 'DIRECTION'])
+
             return ds
 
         else:
