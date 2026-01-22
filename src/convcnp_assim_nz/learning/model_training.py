@@ -125,7 +125,8 @@ def train_epoch_pickled(
     epoch: int = None,
     repeat_sampling: int = None,
     use_grad_clip: bool = False, 
-    grad_clip_value: float = 0.0
+    grad_clip_value: float = 0.0,
+    grad_accum_steps: int = 1
     ):
 
     import pickle
@@ -140,14 +141,11 @@ def train_epoch_pickled(
         opt.zero_grad()
         task_losses = []
 
-        task_counter_debug = 0
+        print(f"Tasks: {tasks}")
 
         for task in tasks:
-            task_losses.append(model.loss_fn(task, normalise=True)) # error is thrown here
-
-            # debug print
-            task_counter_debug += 1
-            print(f'Trained on task {task_counter_debug} / {len(tasks)}')
+            print(f"Task: {task}")
+            task_losses.append(model.loss_fn(task, normalise=True))
 
         mean_batch_loss = B.mean(B.stack(*task_losses))
         mean_batch_loss.backward()
@@ -155,7 +153,10 @@ def train_epoch_pickled(
         if use_grad_clip:
             clip_grad_norm_(model.model.parameters(), grad_clip_value)
 
-        opt.step()
+        # only step the optimizer every GRAD_ACCUM_STEPS. This is gradient accumulation.
+        if (epoch + 1) % grad_accum_steps == 0:
+            opt.step()
+        
         return mean_batch_loss.detach().cpu().numpy()
 
     # list all tasks in train_task_dir
