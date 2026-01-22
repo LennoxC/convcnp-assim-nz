@@ -15,7 +15,7 @@ def compute_val_loss(model, val_tasks):
         val_losses.append(B.to_numpy(model.loss_fn(task, normalise=True)))
     return np.mean(val_losses)
 
-def compute_val_loss_pickled(model, val_task_dir, batch_size: int = None, epoch: int = None, repeat_sampling: int = None):
+def compute_val_loss_pickled(model, val_task_dir, batch_size: int = None, epoch: int = None, repeat_sampling: int = None, fix_noise: float = None):
     import pickle
     import os
     import torch
@@ -30,7 +30,7 @@ def compute_val_loss_pickled(model, val_task_dir, batch_size: int = None, epoch:
             task_losses = []
 
             for task in tasks:
-                task_losses.append(model.loss_fn(task, fix_noise=None, normalise=True))
+                task_losses.append(model.loss_fn(task, fix_noise=fix_noise, normalise=True))
 
             mean_batch_loss = B.mean(B.stack(*task_losses))
         
@@ -126,7 +126,8 @@ def train_epoch_pickled(
     repeat_sampling: int = None,
     use_grad_clip: bool = False, 
     grad_clip_value: float = 0.0,
-    grad_accum_steps: int = 1
+    grad_accum_steps: int = 1,
+    fix_noise: float = None
     ):
 
     import pickle
@@ -142,7 +143,7 @@ def train_epoch_pickled(
         task_losses = []
 
         for task in tasks:
-            task_losses.append(model.loss_fn(task, fix_noise=None, normalise=True))
+            task_losses.append(model.loss_fn(task, fix_noise=fix_noise, normalise=True))
 
         mean_batch_loss = B.mean(B.stack(*task_losses))
         (mean_batch_loss / grad_accum_steps).backward()
