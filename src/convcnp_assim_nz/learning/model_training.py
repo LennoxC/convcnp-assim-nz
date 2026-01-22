@@ -30,7 +30,7 @@ def compute_val_loss_pickled(model, val_task_dir, batch_size: int = None, epoch:
             task_losses = []
 
             for task in tasks:
-                task_losses.append(model.loss_fn(task, normalise=True))
+                task_losses.append(model.loss_fn(task, fix_noise=True, normalise=True))
 
             mean_batch_loss = B.mean(B.stack(*task_losses))
         
@@ -142,18 +142,18 @@ def train_epoch_pickled(
         task_losses = []
 
         for task in tasks:
-            task_losses.append(model.loss_fn(task, normalise=True))
+            task_losses.append(model.loss_fn(task, fix_noise=True, normalise=True))
 
         mean_batch_loss = B.mean(B.stack(*task_losses))
-        mean_batch_loss.backward()
+        (mean_batch_loss / grad_accum_steps).backward()
 
-        if use_grad_clip:
-            clip_grad_norm_(model.model.parameters(), grad_clip_value)
+        if (batch_i + 1) % grad_accum_steps == 0:
+            if use_grad_clip:
+                clip_grad_norm_(model.model.parameters(), grad_clip_value)
 
-        # only step the optimizer every GRAD_ACCUM_STEPS. This is gradient accumulation.
-        if (epoch + 1) % grad_accum_steps == 0:
             opt.step()
-        
+            opt.zero_grad()
+
         return mean_batch_loss.detach().cpu().numpy()
 
     # list all tasks in train_task_dir
