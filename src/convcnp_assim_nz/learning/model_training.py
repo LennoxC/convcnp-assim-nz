@@ -141,10 +141,7 @@ def train_epoch_pickled(
         opt.zero_grad()
         task_losses = []
 
-        print(f"Tasks: {tasks}")
-
         for task in tasks:
-            print(f"Task: {task}")
             task_losses.append(model.loss_fn(task, normalise=True))
 
         mean_batch_loss = B.mean(B.stack(*task_losses))

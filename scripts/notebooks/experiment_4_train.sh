@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #PBS -l select=1:ncpus=8:mem=100gb:ngpus=1
-#PBS -l walltime=48:00:00
-#PBS -q a100q
+#PBS -l walltime=00:40:00
+#PBS -q a100_devq
 #PBS -koed
 #PBS -e /dev/null
 #PBS -o /dev/null
@@ -13,10 +13,10 @@ exec &> "${PBS_O_WORKDIR}/logs/${PBS_JOBID%.*}-${PBS_JOBNAME%.*}.log"
 echo "Running experiment 4, training, GPU mode."
 cd /home/crowelenn/dev/convcnp-assim-nz
 
-export DEVELOPMENT_ENVIRONMENT="0"
+export DEVELOPMENT_ENVIRONMENT="1"
 export DATASET_GENERATION="0" # leave this as 0
 
-export EXPERIMENT_NAME="experiment4_increased_density_batch32"
+export EXPERIMENT_NAME="experiment4_increased_density"
 
 pixi run -e gpu python -m nbconvert \
   --to notebook \

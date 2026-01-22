@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #PBS -l select=1:ncpus=8:mem=100gb
-#PBS -l walltime=03:30:00
+#PBS -l walltime=04:00:00
 #PBS -q shortq
 #PBS -koed
 #PBS -e /dev/null
@@ -16,7 +16,7 @@ cd /home/crowelenn/dev/convcnp-assim-nz
 export DEVELOPMENT_ENVIRONMENT="0"
 export DATASET_GENERATION="1" # leave this as 1
 
-export EXPERIMENT_NAME="experiment4_windspeed_dev"
+export EXPERIMENT_NAME="experiment4_increased_density"
 
 pixi run -e default python -m nbconvert \
   --to notebook \
