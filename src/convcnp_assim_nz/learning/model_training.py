@@ -30,7 +30,7 @@ def compute_val_loss_pickled(model, val_task_dir, batch_size: int = None, epoch:
             task_losses = []
 
             for task in tasks:
-                task_losses.append(model.loss_fn(task, fix_noise=True, normalise=True))
+                task_losses.append(model.loss_fn(task, fix_noise=1e-4, normalise=True))
 
             mean_batch_loss = B.mean(B.stack(*task_losses))
         
@@ -142,7 +142,7 @@ def train_epoch_pickled(
         task_losses = []
 
         for task in tasks:
-            task_losses.append(model.loss_fn(task, fix_noise=True, normalise=True))
+            task_losses.append(model.loss_fn(task, fix_noise=1e-4, normalise=True))
 
         mean_batch_loss = B.mean(B.stack(*task_losses))
         (mean_batch_loss / grad_accum_steps).backward()
