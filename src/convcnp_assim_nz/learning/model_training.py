@@ -1,11 +1,10 @@
-import torch.optim as optim
 import numpy as np
 import lab as B
-from typing import Dict, List
+from typing import List
 from tqdm import tqdm
-import random
-#from deepsensor.data.task import concat_tasks
-import math
+import pickle
+import os
+import torch
 
 # TODO: Investigate using torch.amp.GradScaler for mixed precision training
 
@@ -15,10 +14,14 @@ def compute_val_loss(model, val_tasks):
         val_losses.append(B.to_numpy(model.loss_fn(task, normalise=True)))
     return np.mean(val_losses)
 
-def compute_val_loss_pickled(model, val_task_dir, batch_size: int = None, epoch: int = None, repeat_sampling: int = None, fix_noise: float = None):
-    import pickle
-    import os
-    import torch
+def compute_val_loss_pickled(
+            model, 
+            val_task_dir, 
+            batch_size: int = None, 
+            epoch: int = None, 
+            fix_noise: float = None,
+            n_subsample_targets: int = None,
+        ):
 
     val_losses = []
 
@@ -37,11 +40,7 @@ def compute_val_loss_pickled(model, val_task_dir, batch_size: int = None, epoch:
         return mean_batch_loss.detach().cpu().numpy()
 
     # list all tasks in val_task_dir
-    if epoch is not None and repeat_sampling is not None:
-        file_ext = epoch % repeat_sampling
-        val_task_files = [f for f in os.listdir(val_task_dir) if f.endswith(f'_{file_ext}.pkl')]
-    else:
-        val_task_files = [f for f in os.listdir(val_task_dir) if f.endswith('.pkl')]
+    val_task_files = [f for f in os.listdir(val_task_dir) if f.endswith('.pkl')]
 
     if batch_size is not None:
         n_batches = len(val_task_files) // batch_size  # Note that this will drop the remainder
@@ -56,6 +55,14 @@ def compute_val_loss_pickled(model, val_task_dir, batch_size: int = None, epoch:
             task_file = val_task_files[batch_i * batch_size + b]
             with open(os.path.join(val_task_dir, task_file), 'rb') as f:
                 task = pickle.load(f)
+
+                if n_subsample_targets is not None:
+                    X_t_new, Y_t_new, Y_t_aux_new = subsample_targets(task['X_t'], task['Y_t'], task['Y_t_aux'], n_subsample_targets, seed=epoch, replace=False)
+
+                    task['X_t'] = X_t_new
+                    task['Y_t'] = Y_t_new
+                    task['Y_t_aux'] = Y_t_aux_new
+                
                 tasks.append(task)
 
         if batch_size is not None:
@@ -69,69 +76,18 @@ def compute_val_loss_pickled(model, val_task_dir, batch_size: int = None, epoch:
         
     return np.mean(val_losses)
 
-
-"""
-Train for one epoch over many tasks, each with potentially different numbers of target points.
-Since ConvCNP does not support batching over different input sizes, we have to do this one at a time.
-This is inefficient, a better approach can be using batch_data_by_num_stations to group tasks with the same number of stations together,
-and then use deepsensor.train.train_epoch to train over these batches.
-
-This could be useful for fine-tuning a model which has already been trained with a large dataset using batching.
-The dataset with batching can be generated with `batch_data_by_num_stations`.
-
-As of experiment 2 - this is not used anywhere. I prefer the default deepsensor training loop with batching as this is much faster.
-"""
-
-def train_epoch_many_targets(
-    model,
-    tasks,
-    opt,
-    batch_size: int = 1
-) -> List[float]:
-
-    tasks = np.random.permutation(tasks)
-
-    if batch_size is not None:
-        n_batches = len(tasks) // batch_size  # Note that this will drop the remainder
-    else:
-        n_batches = len(tasks)
-
-    batch_losses = []
-    for batch_i in tqdm(range(n_batches)):
-
-        # zero the gradient at the start of the batch
-        opt.zero_grad()
-
-        losses_within_batch = []
-        for b in range(batch_size):
-            # ConvCNP doesn't support multi-input batching, so we have to do this one at a time
-            task = tasks[batch_i * batch_size + b]
-            task_loss = model.loss_fn(task, normalise=True)
-            losses_within_batch.append(task_loss)
-
-        mean_batch_loss = B.mean(B.stack(*losses_within_batch))
-        mean_batch_loss.backward()
-        opt.step()
-
-        batch_losses.append(mean_batch_loss.detach().cpu().numpy())
-        
-    return batch_losses
-
 def train_epoch_pickled(
     model,
     train_task_dir,
     opt,
     batch_size: int = 1,
     epoch: int = None,
-    repeat_sampling: int = None,
     use_grad_clip: bool = False, 
     grad_clip_value: float = 0.0,
     grad_accum_steps: int = 1,
-    fix_noise: float = None
+    fix_noise: float = None,
+    n_subsample_targets: int = None,
     ):
-
-    import pickle
-    import os
 
     if use_grad_clip:
         from torch.nn.utils import clip_grad_norm_
@@ -157,16 +113,7 @@ def train_epoch_pickled(
 
         return mean_batch_loss.detach().cpu().numpy()
 
-    # list all tasks in train_task_dir
-    # when epoch is specified, this indicates we are using each timestep only once per epoch.
-    #    As multiple tasks were generated per timestep, we filter the task files to only those
-    #    corresponding to the current epoch. This helps mitigate immediate overfitting when using
-    #    small datasets.
-    if epoch is not None and repeat_sampling is not None:
-        file_ext = epoch % repeat_sampling
-        train_task_files = [f for f in os.listdir(train_task_dir) if f.endswith(f'_{file_ext}.pkl')]
-    else:
-        train_task_files = [f for f in os.listdir(train_task_dir) if f.endswith('.pkl')]
+    train_task_files = [f for f in os.listdir(train_task_dir) if f.endswith('.pkl')]
     
     train_task_files = np.random.permutation(train_task_files)
 
@@ -184,6 +131,14 @@ def train_epoch_pickled(
             task_file = train_task_files[batch_i * batch_size + b]
             with open(os.path.join(train_task_dir, task_file), 'rb') as f:
                 task = pickle.load(f)
+
+                if n_subsample_targets is not None:
+                    X_t_new, Y_t_new, Y_t_aux_new = subsample_targets(task['X_t'], task['Y_t'], task['Y_t_aux'], n_subsample_targets, seed=epoch, replace=False)
+
+                    task['X_t'] = X_t_new
+                    task['Y_t'] = Y_t_new
+                    task['Y_t_aux'] = Y_t_aux_new
+                
                 tasks.append(task)
 
         if batch_size is not None:
@@ -459,3 +414,67 @@ def return_sample_predictions(era5_date_ds, h8_date_ds, nzra_date_ds, nzra_ds, s
     plt.tight_layout()
 
     return fig
+
+import numpy as np
+
+# for sampling from tasks 'after the fact' - i.e. sampling from a full task.
+
+def subsample_targets(
+    X_t,
+    Y_t,
+    Y_t_aux,
+    N,
+    seed=None,
+    replace=False,
+):
+    rng = np.random.default_rng(seed)
+
+    # Infer Nt
+    Nt = X_t[0][0].shape[1]
+    Ntot = Nt * Nt
+
+    if N == 0:
+        X_t_sub = [np.zeros((2, 0), dtype=X_t[0][0].dtype)]
+        Y_t_sub = [np.zeros((arr.shape[0], 0), dtype=arr.dtype) for arr in Y_t]
+        Y_t_aux_sub = np.zeros((Y_t_aux.shape[0], 0), dtype=Y_t_aux.dtype)
+        return X_t_sub, Y_t_sub, Y_t_aux_sub
+
+    if N > Ntot and not replace:
+        raise ValueError(
+            f"Cannot sample N={N} points from Nt^2={Ntot} without replacement"
+        )
+
+    # ---- sample flat grid points ----
+    flat_idx = rng.choice(Ntot, size=N, replace=replace)
+    ii = flat_idx // Nt
+    jj = flat_idx % Nt
+
+    # ---- X_t ----
+    # original format: [(x1, x2)] where each is (1, Nt)
+    x1, x2 = X_t[0]
+    X_t_sub = [
+        np.vstack([
+            x1[:, jj],
+            x2[:, ii],
+        ]).astype(x1.dtype)
+    ]
+
+    # ---- Y_t ----
+    Y_t_sub = []
+    for arr in Y_t:
+        if arr.ndim == 2:
+            # (C, Nt) to (C, N)
+            Y_t_sub.append(arr[:, jj])
+        elif arr.ndim == 3:
+            # (C, Nt, Nt) to (C, N)
+            Y_t_sub.append(arr[:, ii, jj])
+        else:
+            raise ValueError(f"Unsupported Y_t array shape: {arr.shape}")
+
+    # ---- Y_t_aux ----
+    if Y_t_aux.ndim != 3:
+        raise ValueError("Y_t_aux must have shape (C_aux, Nt, Nt)")
+
+    Y_t_aux_sub = Y_t_aux[:, ii, jj]
+
+    return X_t_sub, Y_t_sub, Y_t_aux_sub
