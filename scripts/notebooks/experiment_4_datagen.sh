@@ -16,7 +16,7 @@ cd /home/crowelenn/dev/convcnp-assim-nz
 export DEVELOPMENT_ENVIRONMENT="0"
 export DATASET_GENERATION="1" # leave this as 1
 
-export EXPERIMENT_NAME="experiment4_increased_density"
+export EXPERIMENT_NAME="experiment4_half_density"
 
 pixi run -e default python -m nbconvert \
   --to notebook \

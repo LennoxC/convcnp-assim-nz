@@ -16,7 +16,7 @@ cd /home/crowelenn/dev/convcnp-assim-nz
 export DEVELOPMENT_ENVIRONMENT="0"
 export DATASET_GENERATION="0" # leave this as 0
 
-export EXPERIMENT_NAME="experiment4_subsampling"
+export EXPERIMENT_NAME="experiment4_half_density"
 
 pixi run -e gpu python -m nbconvert \
   --to notebook \
