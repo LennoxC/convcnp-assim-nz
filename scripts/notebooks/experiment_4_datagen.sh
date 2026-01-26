@@ -13,7 +13,7 @@ exec &> "${PBS_O_WORKDIR}/logs/${PBS_JOBID%.*}-${PBS_JOBNAME%.*}.log"
 echo "Running experiment 4, data generation, CPU mode."
 cd /home/crowelenn/dev/convcnp-assim-nz
 
-export DEVELOPMENT_ENVIRONMENT="1"
+export DEVELOPMENT_ENVIRONMENT="0"
 export DATASET_GENERATION="1" # leave this as 1
 
 export EXPERIMENT_NAME="experiment4_multiyear_reduced_channels"

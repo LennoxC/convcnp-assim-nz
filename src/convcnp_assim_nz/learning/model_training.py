@@ -317,15 +317,15 @@ def return_sample_predictions(era5_date_ds, h8_date_ds, nzra_date_ds, nzra_ds, s
     from deepsensor.data.loader import TaskLoader
     from convcnp_assim_nz.utils.variables.coord_names import LATITUDE, LONGITUDE
 
-    era5_date_processed, h8_date_processed, nzra_processed, stations_date_processed = data_processor([era5_date_ds, h8_date_ds, nzra_date_ds, stations_date_df])
+    era5_date_processed, nzra_processed, stations_date_processed = data_processor([era5_date_ds, nzra_date_ds, stations_date_df])
 
     temp_task_loader = TaskLoader(
-        context = [h8_date_processed, stations_date_processed, era5_date_processed, ds_aux_coarse_processed], 
+        context = [stations_date_processed, era5_date_processed, ds_aux_coarse_processed], 
         target = nzra_processed,
         aux_at_targets = ds_aux_processed)
     
     # the task for inference/prediction
-    task = temp_task_loader(val_date, context_sampling=["all", "all", "all", "all"], target_sampling=["all"])
+    task = temp_task_loader(val_date, context_sampling=["all", "all", "all"], target_sampling=["all"])
 
     pred = model.predict(task, X_t=nzra_ds[[LATITUDE, LONGITUDE]])
 
