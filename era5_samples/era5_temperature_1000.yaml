@@ -1,0 +1,16 @@
+Nort: -32
+West: 165
+Sout: -50
+East: 180
+
+hourly_freq: 1
+
+# optional flags to specify whether to download surface and/or pressure data (default both are true)
+download_surface: false
+download_pressure: true
+
+pressure_var:
+- 'temperature'
+
+pressure_levels:
+- '1000'

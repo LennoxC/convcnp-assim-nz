@@ -68,5 +68,5 @@ class StationFileLoader():
                 filepath = os.path.join(get_env_var('STATIONS_PATH'), csv_file)
         
             df = pd.read_csv(filepath)
-            #ds = df.to_xarray() # still return as xarray Dataset for consistency, even though often csv is required eventually
+            
             return df

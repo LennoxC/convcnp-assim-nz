@@ -207,7 +207,7 @@ class ProcessStations(DataProcess):
         else:
             raise ValueError(f"Unsupported mode: {self.mode}. Supported modes: 'netcdf', 'csv'.")
 
-    def rename_coords(self, ds) -> xr.Dataset:
+    def rename_coords(self, ds):
 
         if self.mode == 'netcdf':
             rename_dict = {}
@@ -219,8 +219,16 @@ class ProcessStations(DataProcess):
             return ds
         
         elif self.mode == 'csv':
-            ds = ds.rename(columns={'LAT': LATITUDE, 'LONGT': LONGITUDE, 'OBS_DATE_UTC': TIME })
-            ds[TIME] = pd.to_datetime(ds[TIME], format="%Y%m%d:%H%M")
+
+            ds = ds.rename(columns={'LAT': LATITUDE, 'LONGT': LONGITUDE})
+
+            if 'OBS_DATE_UTC' in ds.columns:
+                ds = ds.rename(columns={'OBS_DATE_UTC': TIME })
+            if 'DATE_UTC' in ds.columns:
+                ds = ds.rename(columns={'DATE_UTC': TIME })
+
+            ds[TIME] = pd.to_datetime(ds[TIME], format="%Y%m%d:%H:%M")
+            #ds[TIME] = pd.to_datetime(ds[TIME], format="ISO8601")
             return ds
 
         else:

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-#PBS -l select=1:ncpus=8:mem=120gb
-#PBS -l walltime=01:00:00
+#PBS -l select=1:ncpus=8:mem=200gb
+#PBS -l walltime=04:00:00
 #PBS -q shortq
 #PBS -koed
 #PBS -e /dev/null
