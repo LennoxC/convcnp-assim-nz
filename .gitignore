@@ -33,3 +33,4 @@ tensorboard_nohup.out
 .pixi/*
 !.pixi/config.toml
 .ipynb_checkpoints
+.nfse*

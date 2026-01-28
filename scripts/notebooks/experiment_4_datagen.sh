@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#PBS -l select=1:ncpus=8:mem=100gb
+#PBS -l select=1:ncpus=8:mem=250gb
 #PBS -l walltime=04:00:00
 #PBS -q shortq
 #PBS -koed
@@ -15,8 +15,8 @@ cd /home/crowelenn/dev/convcnp-assim-nz
 
 export DEVELOPMENT_ENVIRONMENT="0"
 export DATASET_GENERATION="1" # leave this as 1
-
-export EXPERIMENT_NAME="experiment4_multiyear_reduced_channels"
+export PROCESS_YEAR="2013" # (optional) set to a year (e.g., 2013) to only process that year. Comment out or set to 0 if not using.
+export EXPERIMENT_NAME="experiment4_multiyear_reduced_channels" # experiment name. Used in file paths for checkpointing model + data processor (normalization)
 
 pixi run -e default python -m nbconvert \
   --to notebook \
