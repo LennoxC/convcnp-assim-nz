@@ -81,8 +81,8 @@ class ProcessNZRA(DataProcess):
         rename_dict = {
             'temperature_avg': TEMPERATURE,
             'mean_sfc_dw_sw_flux': SHORTWAVE_FLUX_DOWN,  # mean downward shortwave flux at the surface
-            'sfc_merid_wind': WIND_U,                    # true northward (meridional) wind at 10m
-            'sfc_zonal_wind': WIND_V                     # true eastward (zonal) wind at 10m
+            'sfc_merid_wind': WIND_V,                    # true northward (meridional) wind at 10m
+            'sfc_zonal_wind': WIND_U                     # true eastward (zonal) wind at 10m
         }
 
         ds = ds.rename(rename_dict)

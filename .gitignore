@@ -29,7 +29,7 @@ tensorboard_nohup.out
 .tensorboard/
 
 # system temp files? To do with university NFS
-.nfs*# pixi environments
+.nfs*
 .pixi/*
 !.pixi/config.toml
 .ipynb_checkpoints

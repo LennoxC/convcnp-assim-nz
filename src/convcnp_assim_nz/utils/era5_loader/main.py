@@ -19,7 +19,7 @@ def get_commandline_args():
     parser = ArgumentParser(description="Download ERA5 data from the Copernicus Climate Data Store (CDS).")
     parser.add_argument(
         "-c", "--config", type=str, dest="config", default=None,
-        help="Path to the configuration file containing the API key.",
+        help="Path to the ERA5 configuration file.",
     )
     parser.add_argument(
         "-s", "--start_date", type=str, dest="start_date", default=None,

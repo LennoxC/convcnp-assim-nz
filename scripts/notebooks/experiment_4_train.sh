@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #PBS -l select=1:ncpus=8:mem=100gb:ngpus=1
-#PBS -l walltime=48:00:00
+#PBS -l walltime=72:00:00
 #PBS -q a100q
 #PBS -koed
 #PBS -e /dev/null
@@ -16,7 +16,7 @@ cd /home/crowelenn/dev/convcnp-assim-nz
 export DEVELOPMENT_ENVIRONMENT="0"
 export DATASET_GENERATION="0" # leave this as 0
 
-export EXPERIMENT_NAME="experiment4_nzra_target_increased_density"
+export EXPERIMENT_NAME="experiment4_multiyear_reduced_channels"
 
 pixi run -e gpu python -m nbconvert \
   --to notebook \

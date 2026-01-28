@@ -13,28 +13,20 @@ class ERA5FileLoader:
     def __init__(self):
         pass
 
-    def get_filenames(self, mode, years
-                      #mode: Literal['surface', 'pressure'],
-                      #years: List=None,
-                      ) -> List[str]:
+    def get_filenames(self, years) -> List[str]:
         """ Get list of ERA5 filenames for variable and list of years (if specified) """ 
 
-        # we must have either 'surface' or 'pressure' mode as those are the two ERA5 data types
-        if mode not in ["surface", "pressure"]:
-            raise ValueError(f'mode must be "surface" or "pressure", not {mode}')
-
         # find the home path for the specified mode
-        home_path = os.path.join(get_env_var("DATA_HOME"), get_env_var("ERA5_SUFFIX", default="era5"), mode)
+        era_5_path = get_env_var("ERA5_PATH")
    
         # search all .nc files in home path if no years specified
         if years is None:
-            filenames = glob.glob(f'{home_path}/*/*/*.nc')
+            filenames = glob.glob(f'{era_5_path}/*.nc')
         else: # search for all .nc files in specified years
             filenames = []
             for year in years:
-                filenames_year = glob.glob(f'{home_path}/{year}/*.nc')
-                if len(filenames_year) == 0:
-                    filenames_year = glob.glob(f'{home_path}/{year}/*/*.nc')
+                filenames_year = glob.glob(f'{era_5_path}/{year}-*.nc')
+                
                 filenames = filenames + filenames_year
 
         return filenames
@@ -64,6 +56,12 @@ class ERA5FileLoader:
         else:
             ValueError (f'Years should be int, str or list, not {type(years)}')
 
+        filenames = self.get_filenames(years)
+        return xr.open_mfdataset(filenames, engine="h5netcdf")
+
+
+
+        """
         if os.getenv("USE_ABSOLUTE_FILEPATHS") == "0":
             if mode is None:
                 raise ValueError("mode must be specified when USE_ABSOLUTE_FILEPATHS is False")
@@ -73,3 +71,4 @@ class ERA5FileLoader:
         else:
             zarr_file = get_env_var("ERA5_PATH")
             return xr.open_zarr(zarr_file)
+        """
