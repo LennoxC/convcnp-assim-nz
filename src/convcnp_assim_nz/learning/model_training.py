@@ -33,7 +33,7 @@ def compute_val_loss_pickled(
             task_losses = []
 
             for task in tasks:
-                task_losses.append(model.loss_fn(task, fix_noise=fix_noise, normalise=True))
+                task_losses.append(model.loss_fn(task, edge_margin=(model.model.receptive_field/2), fix_noise=fix_noise, normalise=True))
 
             mean_batch_loss = B.mean(B.stack(*task_losses))
         
@@ -99,7 +99,7 @@ def train_epoch_pickled(
         task_losses = []
 
         for task in tasks:
-            task_losses.append(model.loss_fn(task, fix_noise=fix_noise, normalise=True))
+            task_losses.append(model.loss_fn(task, edge_margin=(model.model.receptive_field/2), fix_noise=fix_noise, normalise=True))
 
         mean_batch_loss = B.mean(B.stack(*task_losses))
         (mean_batch_loss / grad_accum_steps).backward()
@@ -347,9 +347,13 @@ def return_sample_predictions(era5_date_ds, h8_date_ds, nzra_date_ds, nzra_ds, s
     Ny = Ny - padding//2
     Nx = Nx - padding//2
 
-    # Shared colour scale across truth + prediction
+    # Colour scale based on NZRA target image
     vmin = min(truth_field.min(), pred_mean.min())
     vmax = max(truth_field.max(), pred_mean.max())
+
+    # use this to plot range solely from NZRA          
+    #vmin = truth_field.min()
+    #vmax = truth_field.max()
 
     # Annotated grid points
     ys = np.linspace(padding//2, Ny - 1, N_ANN, dtype=int)

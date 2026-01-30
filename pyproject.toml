@@ -1,5 +1,4 @@
 [project]
-dependencies = ["deepsensor>=0.4.2,<0.5"]
 name = "convcnp-assim-nz"
 requires-python = ">= 3.11"
 version = "0.1.0"
@@ -21,6 +20,8 @@ default = ["cpu"]
 
 [tool.pixi.pypi-dependencies]
 convcnp_assim_nz = { path = ".", editable = true }
+NeuralProcesses = { path = "../neuralprocesses", editable = true }
+deepsensor = { path = "../deepsensor", editable = true }
 
 [tool.pixi.tasks]
 
