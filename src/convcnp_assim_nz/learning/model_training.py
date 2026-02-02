@@ -5,6 +5,8 @@ from tqdm import tqdm
 import pickle
 import os
 import torch
+from matplotlib.colors import CenteredNorm
+import matplotlib
 
 # TODO: Investigate using torch.amp.GradScaler for mixed precision training
 
@@ -41,6 +43,9 @@ def compute_val_loss_pickled(
 
     # list all tasks in val_task_dir
     val_task_files = [f for f in os.listdir(val_task_dir) if f.endswith('.pkl')]
+
+    # limit for testing
+    #val_task_files = val_task_files[:10*batch_size]
 
     if batch_size is not None:
         n_batches = len(val_task_files) // batch_size  # Note that this will drop the remainder
@@ -115,6 +120,9 @@ def train_epoch_pickled(
 
     train_task_files = [f for f in os.listdir(train_task_dir) if f.endswith('.pkl')]
     
+    # limit for testing
+    #train_task_files = train_task_files[:10*batch_size]
+
     train_task_files = np.random.permutation(train_task_files)
 
     if batch_size is not None:
@@ -310,7 +318,7 @@ def concat_tasks_custom(tasks: List[Task], multiple: int = 1) -> Task:
 
     return merged_task
 
-def return_sample_predictions(era5_date_ds, h8_date_ds, nzra_date_ds, nzra_ds, stations_date_df, ds_aux_processed, ds_aux_coarse_processed, val_date, data_processor, epoch, model, target, padding = 200, subtitle_text="Placeholder subtitle text"):
+def return_sample_predictions(era5_date_ds, h8_date_ds, nzra_date_ds, nzra_ds, stations_date_df, ds_aux_processed, ds_aux_coarse_processed, val_date, data_processor, epoch, model, target, mode="unmodified", padding = 200, subtitle_text="Placeholder subtitle text", title_append=""):
     
     import matplotlib.pyplot as plt
     from mpl_toolkits.basemap import Basemap
@@ -332,14 +340,31 @@ def return_sample_predictions(era5_date_ds, h8_date_ds, nzra_date_ds, nzra_ds, s
     # Number of annotated grid points
     N_ANN = 5
 
-    fig, ax = plt.subplots(2, 2, figsize=(8, 8))
-    fig.suptitle(f'Epoch {epoch} Predictions for {val_date}', fontsize=18)
-    fig.text(0.5, 0.94, subtitle_text, ha='center', fontsize=12, color='gray')
+    if mode == "diff":
+        fig, ax = plt.subplots(3, 3, figsize=(12, 12))
+    else:
+        fig, ax = plt.subplots(2, 2, figsize=(8, 8))
+    
+    if title_append != "":
+        fig.suptitle(f'Epoch {epoch} Predictions for {val_date} | {title_append}', fontsize=18)
+    else:
+        fig.suptitle(f'Epoch {epoch} Predictions for {val_date}', fontsize=18)
+    
+    if not mode == "diff":
+        fig.text(0.5, 0.94, subtitle_text, ha='center', fontsize=12, color='gray')
 
     # --- DATA EXTRACTION ---
-    truth_field = nzra_ds[target].sel(time=val_date).values
-    pred_mean  = pred[target]["mean"].isel(time=0).values
-    pred_std   = pred[target]["std"].isel(time=0).values
+    model_target = target if mode not in ["diff"] else f"{target}_diff"
+    
+    truth_field = nzra_ds[model_target].sel(time=val_date).values
+    pred_mean  = pred[model_target]["mean"].isel(time=0).values
+    pred_std   = pred[model_target]["std"].isel(time=0).values
+
+    if mode == "diff":
+        pred_mean_adj = pred_mean + era5_date_ds[target].values
+        truth_field_adj = truth_field + era5_date_ds[target].values
+
+        pred_truth_error = truth_field_adj - pred_mean_adj
 
     Ny, Nx = truth_field.shape
 
@@ -362,7 +387,7 @@ def return_sample_predictions(era5_date_ds, h8_date_ds, nzra_date_ds, nzra_ds, s
 
     # --- TOP LEFT: NZRA temperature ---
     im0 = ax[0, 0].imshow(truth_field, origin='lower', vmin=vmin, vmax=vmax)
-    ax[0, 0].set_title(f"NZRA {target}")
+    ax[0, 0].set_title(f"NZRA {model_target}")
     fig.colorbar(im0, ax=ax[0, 0], shrink=0.7)
     for y, x in annot_points:
         ax[0, 0].text(x, y, f"{truth_field[y,x]:.1f}", fontsize=7,
@@ -414,7 +439,55 @@ def return_sample_predictions(era5_date_ds, h8_date_ds, nzra_date_ds, nzra_ds, s
     for y, x in annot_points:
         ax[1, 1].text(x, y, f"{pred_std[y,x]:.2f}", fontsize=6,
                     color='white', ha='center', va='center')
+        
+    if mode == "diff":
+        # --- TOP FURTHER RIGHT: ERA5 ---
+        im_extra = ax[0, 2].imshow(era5_date_ds[target].values, origin='lower')
+        ax[0, 2].set_title(f"ERA5 {target}")
+        fig.colorbar(im_extra, ax=ax[0, 2], shrink=0.7)
+        for y, x in annot_points:
+            ax[0, 2].text(x, y, f"{era5_date_ds[target].values[y,x]:.1f}", fontsize=7,
+                        color='white', ha='center', va='center')
 
+        # --- MOST BOTTOM LEFT: PRED MEAN ADJUSTED ---
+        im4 = ax[2, 0].imshow(pred_mean_adj, origin='lower')
+        ax[2, 0].set_title(f"ConvCNP {target} prediction (mean + ERA5)")
+        fig.colorbar(im4, ax=ax[2, 0], shrink=0.7)
+        for y, x in annot_points:
+            ax[2, 0].text(x, y, f"{pred_mean_adj[y,x]:.1f}", fontsize=7,
+                        color='white', ha='center', va='center')
+            
+        # --- MOST BOTTOM RIGHT: PRED ACTUAL ADJUSTED ---
+        im5 = ax[2, 1].imshow(truth_field_adj, origin='lower')
+        ax[2, 1].set_title(f"NZRA {target} (reconstructed)")
+        fig.colorbar(im5, ax=ax[2, 1], shrink=0.7)
+        for y, x in annot_points:
+            ax[2, 1].text(x, y, f"{truth_field_adj[y,x]:.1f}", fontsize=7,
+                        color='white', ha='center', va='center')
+
+        # Create the colormap
+        custom_cmap = matplotlib.colors.LinearSegmentedColormap.from_list(
+            "custom_red_blue", ["red", "white", "blue"], N=256
+        )
+
+        # --- ERROR PLOT ---
+        im6 = ax[2, 2].imshow(pred_truth_error, origin='lower', cmap=custom_cmap, norm=CenteredNorm())
+        ax[2, 2].set_title(f"Prediction Error (Adjusted)")
+        fig.colorbar(im6, ax=ax[2, 2], shrink=0.7)
+        for y, x in annot_points:
+            ax[2, 2].text(x, y, f"{pred_truth_error[y,x]:.1f}", fontsize=7,
+                        color='black', ha='center', va='center')
+            
+        # plot with text - fills missing subplot space
+        ax[1, 2].axis('off')
+        ax[1, 2].text(0.5, 0.5,
+                    subtitle_text,
+                    horizontalalignment='center',
+                    verticalalignment='center',
+                    fontsize=12,
+                    wrap=True)
+        
+            
     plt.tight_layout()
 
     return fig
