@@ -2,6 +2,7 @@ import xarray as xr
 from typing import Union
 import pandas as pd
 from convcnp_assim_nz.utils.variables.coord_names import TIME, LATITUDE, LONGITUDE
+import os
 
 """
 I have tried to construct this so that it operates in a similar pattern to the deepsensor normalizer.
@@ -39,12 +40,13 @@ class NetCDFNormalizer:
             raise TypeError("Input data must be an xarray.Dataset or pandas.DataFrame")
 
     def fit_xr(self, data: xr.Dataset, variable: str):
-        ds_params = {}
+        if self.params.get(variable) is None:
+            ds_params = {}
         
-        ds_params['mean'] = data[variable].mean(dim=self.avg_over)
-        ds_params['std'] = data[variable].std(dim=self.avg_over)
+            ds_params['mean'] = data[variable].mean(dim=self.avg_over)
+            ds_params['std'] = data[variable].std(dim=self.avg_over)
 
-        self.params[variable] = ds_params
+            self.params[variable] = ds_params
 
         out_variable = f"{variable}_norm"
 
@@ -54,15 +56,19 @@ class NetCDFNormalizer:
 
     
     def fit_pd(self, data: pd.DataFrame, column: str):
-        
-        df_params = {}
-        norm_variables = data.groupby(self.average_per)[column].agg(['mean', 'std']).reset_index()
+        if self.params.get(column) is None:
+            df_params = {}
+            new_norm_variables = data.groupby(self.average_per)[column].agg(['mean', 'std']).reset_index()
+            df_params['mean'] = new_norm_variables.set_index(self.average_per)['mean']
+            df_params['std'] = new_norm_variables.set_index(self.average_per)['std']
+
+            self.params[column] = df_params
+
+        # fetch the normalization parameters for this variable from the params dictionary
+        norm_variables = pd.concat([self.params[column]['mean'], self.params[column]['std']], axis=1)
 
         # join norm_per_station back to stations_era5
         data = data.merge(norm_variables, how='left', on=self.average_per, suffixes=('', '_station_norm'))
-
-        df_params['mean'] = norm_variables.set_index(self.average_per)['mean']
-        df_params['std'] = norm_variables.set_index(self.average_per)['std']
 
         data[f"{column}_norm"] = (data[column] - data['mean']) / data['std']
         data = data.set_index([TIME, LATITUDE, LONGITUDE])
@@ -78,8 +84,50 @@ class NetCDFNormalizer:
         
         return data[out_variable]
     
-    def save(self):
-        raise NotImplementedError("Saving normalization parameters is not implemented yet.")
+    def save(self, filepath: str):
+        # directories within the filepath will need to be created for each variable
+        for variable, var_params in self.params.items():
+            var_dir = os.path.join(filepath, variable)
+            os.makedirs(var_dir, exist_ok=True)
 
-    def load(self):
-        raise NotImplementedError("Loading normalization parameters is not implemented yet.")
+            # if the parameters are xarray objects, we can save them as netcdf files
+            if isinstance(var_params['mean'], xr.DataArray) and isinstance(var_params['std'], xr.DataArray):
+                var_params['mean'].to_netcdf(os.path.join(var_dir, 'mean.nc'))
+                var_params['std'].to_netcdf(os.path.join(var_dir, 'std.nc'))
+
+            # if the parameters are pandas objects, we can save them as csv files
+            elif isinstance(var_params['mean'], pd.Series) and isinstance(var_params['std'], pd.Series):
+                var_params['mean'].to_csv(os.path.join(var_dir, 'mean.csv'))
+                var_params['std'].to_csv(os.path.join(var_dir, 'std.csv'))
+            
+            else:
+                raise TypeError(f"Normalization parameters must be either xarray.DataArray or pandas.DataFrame. Found {type(var_params['mean'])} and {type(var_params['std'])} for variable {variable}")
+
+        print(f"Normalization parameters saved to {filepath}")
+
+    def load(self, filepath: str):
+        # discover the variables by looking at the directories in the filepath
+        for variable in os.listdir(filepath):
+            var_dir = os.path.join(filepath, variable)
+            if os.path.isdir(var_dir):
+                var_params = {}
+                mean_path_nc = os.path.join(var_dir, 'mean.nc')
+                std_path_nc = os.path.join(var_dir, 'std.nc')
+                mean_path_csv = os.path.join(var_dir, 'mean.csv')
+                std_path_csv = os.path.join(var_dir, 'std.csv')
+
+                if os.path.exists(mean_path_nc) and os.path.exists(std_path_nc):
+                    var_params['mean'] = xr.load_dataarray(mean_path_nc)
+                    var_params['std'] = xr.load_dataarray(std_path_nc)
+
+                elif os.path.exists(mean_path_csv) and os.path.exists(std_path_csv):
+                    var_params['mean'] = pd.read_csv(mean_path_csv).set_index(self.average_per)
+                    var_params['std'] = pd.read_csv(std_path_csv).set_index(self.average_per)
+
+                else:
+                    raise FileNotFoundError(f"Normalization parameters for variable {variable} not found in {var_dir}")
+
+                self.params[variable] = var_params
+
+        print(f"Normalization parameters loaded from {filepath}")
+        
