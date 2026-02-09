@@ -318,7 +318,23 @@ def concat_tasks_custom(tasks: List[Task], multiple: int = 1) -> Task:
 
     return merged_task
 
-def return_sample_predictions(era5_date_ds, h8_date_ds, nzra_date_ds, nzra_ds, stations_date_df, ds_aux_processed, ds_aux_coarse_processed, val_date, data_processor, epoch, model, target, mode="unmodified", padding = 200, subtitle_text="Placeholder subtitle text", title_append=""):
+def return_sample_predictions(era5_date_ds, 
+                              era5_target_field, 
+                              h8_date_ds, 
+                              nzra_date_ds, 
+                              nzra_ds, 
+                              stations_date_df, 
+                              ds_aux_processed, 
+                              ds_aux_coarse_processed, 
+                              val_date, 
+                              data_processor, 
+                              epoch, 
+                              model, 
+                              target, 
+                              mode="unmodified", 
+                              padding = 200, 
+                              custom_norm=None,
+                              subtitle_text="Placeholder subtitle text", title_append=""):
     
     import matplotlib.pyplot as plt
     from mpl_toolkits.basemap import Basemap
@@ -335,7 +351,18 @@ def return_sample_predictions(era5_date_ds, h8_date_ds, nzra_date_ds, nzra_ds, s
     # the task for inference/prediction
     task = temp_task_loader(val_date, context_sampling=["all", "all", "all"], target_sampling=["all"])
 
-    pred = model.predict(task, X_t=nzra_ds[[LATITUDE, LONGITUDE]])
+    model_target = target if mode not in ["diff"] else f"{target}_diff"
+
+    pred = model.predict(task, X_t=nzra_ds[[LATITUDE, LONGITUDE]], unnormalise=(custom_norm is None))
+
+    if custom_norm is not None:
+        #print(pred['temperature_diff_norm']['mean'])
+
+        pred_unnorm_mean = custom_norm.unnormalize_xr(pred[f"{model_target}_norm"], variable="mean", internal_variable=model_target, coord_mapping = {LATITUDE: "x1", LONGITUDE: "x2"})
+        
+        pred_unnorm_mean = data_processor.map_coords(pred_unnorm_mean, unnorm=True)
+
+    print("Prediction complete, now plotting...")
 
     # Number of annotated grid points
     N_ANN = 5
@@ -354,17 +381,28 @@ def return_sample_predictions(era5_date_ds, h8_date_ds, nzra_date_ds, nzra_ds, s
         fig.text(0.5, 0.94, subtitle_text, ha='center', fontsize=12, color='gray')
 
     # --- DATA EXTRACTION ---
-    model_target = target if mode not in ["diff"] else f"{target}_diff"
-    
     truth_field = nzra_ds[model_target].sel(time=val_date).values
-    pred_mean  = pred[model_target]["mean"].isel(time=0).values
-    pred_std   = pred[model_target]["std"].isel(time=0).values
-
+    
+    if custom_norm is None:
+        pred_mean = pred[model_target]["mean"].isel(time=0).values
+        pred_std  = pred[model_target]["std"].isel(time=0).values
+    else:
+        pred_mean = pred[f"{model_target}_norm"]["mean"].isel(time=0).values
+        pred_std  = pred[f"{model_target}_norm"]["std"].isel(time=0).values
+    
     if mode == "diff":
-        pred_mean_adj = pred_mean + era5_date_ds[target].values
-        truth_field_adj = truth_field + era5_date_ds[target].values
+        #               = difference  + era5 temperature
+        truth_field_adj = truth_field + era5_target_field.values
 
-        pred_truth_error = truth_field_adj - pred_mean_adj
+        if custom_norm is not None:
+            #             = predict   + mean bias                                + era5 temperature
+            pred_mean_adj = pred_mean + custom_norm.params[model_target]['mean'] + era5_target_field.values
+            pred_truth_error = truth_field_adj - pred_mean_adj
+
+        else:
+            truth_field_adj = truth_field + era5_date_ds[target].values
+            pred_truth_error = truth_field_adj - pred_mean_adj 
+
 
     Ny, Nx = truth_field.shape
 
@@ -442,11 +480,11 @@ def return_sample_predictions(era5_date_ds, h8_date_ds, nzra_date_ds, nzra_ds, s
         
     if mode == "diff":
         # --- TOP FURTHER RIGHT: ERA5 ---
-        im_extra = ax[0, 2].imshow(era5_date_ds[target].values, origin='lower')
+        im_extra = ax[0, 2].imshow(era5_target_field.values, origin='lower')
         ax[0, 2].set_title(f"ERA5 {target}")
         fig.colorbar(im_extra, ax=ax[0, 2], shrink=0.7)
         for y, x in annot_points:
-            ax[0, 2].text(x, y, f"{era5_date_ds[target].values[y,x]:.1f}", fontsize=7,
+            ax[0, 2].text(x, y, f"{era5_target_field.values[y,x]:.1f}", fontsize=7,
                         color='white', ha='center', va='center')
 
         # --- MOST BOTTOM LEFT: PRED MEAN ADJUSTED ---

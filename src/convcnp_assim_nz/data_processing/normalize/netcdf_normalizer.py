@@ -16,6 +16,8 @@ class NetCDFNormalizer:
         self.avg_over = [TIME]
         self.average_per = [LATITUDE, LONGITUDE]
 
+        self.loaded_existing_params = False
+
         self.params = {}
         
     def __call__(self, data: Union[xr.Dataset, pd.DataFrame], **kwds):
@@ -43,8 +45,8 @@ class NetCDFNormalizer:
         if self.params.get(variable) is None:
             ds_params = {}
         
-            ds_params['mean'] = data[variable].mean(dim=self.avg_over)
-            ds_params['std'] = data[variable].std(dim=self.avg_over)
+            ds_params['mean'] = data[variable].mean(dim=self.avg_over).compute()
+            ds_params['std'] = data[variable].std(dim=self.avg_over).compute()
 
             self.params[variable] = ds_params
 
@@ -52,7 +54,7 @@ class NetCDFNormalizer:
 
         data[out_variable] = (data[variable] - self.params[variable]['mean']) / self.params[variable]['std']
 
-        return data[out_variable]
+        return data[out_variable].compute()
 
     
     def fit_pd(self, data: pd.DataFrame, column: str):
@@ -75,14 +77,38 @@ class NetCDFNormalizer:
 
         # return the normalized column along with the average_per columns
         return data[f"{column}_norm"]
-    
+        
+    def unnormalize_xr(self, 
+                       data: xr.Dataset, 
+                       variable: str,
+                       internal_variable: str = None,
+                       coord_mapping: dict = None):
 
-    def unnormalize_xr(self, data: xr.Dataset, variable: str):
-        out_variable = variable.replace("_norm", "")
-        
-        data[out_variable] = data[variable] * self.params[out_variable]['std'] + self.params[out_variable]['mean']
-        
-        return data[out_variable]
+        if internal_variable is None:
+            internal_variable = variable
+
+        mean = self.params[internal_variable]["mean"]
+        std = self.params[internal_variable]["std"]
+
+        data = data.isel(time=0).drop(TIME) if TIME in data.coords else data
+
+        print("mean")
+        print(mean)
+
+        print("std")
+        print(std)
+
+        print("data")
+        print(data)
+
+        # if the input dataset has different coordinate names to the normalization parameters, we can rename the coordinates of the parameters to match the dataset
+        # e.g. data might have coords x1 x2. Pass: coord_mapping = {LATITUDE: "x1", LONGITUDE: "x2"} to rename the coordinates of the parameters to match the dataset
+        if coord_mapping is not None:
+            mean = mean.rename(coord_mapping)
+            std = std.rename(coord_mapping)
+
+        data[variable] = data[variable] * std + mean
+        return data[variable].compute()
     
     def save(self, filepath: str):
         # directories within the filepath will need to be created for each variable
@@ -96,16 +122,19 @@ class NetCDFNormalizer:
                 var_params['std'].to_netcdf(os.path.join(var_dir, 'std.nc'))
 
             # if the parameters are pandas objects, we can save them as csv files
-            elif isinstance(var_params['mean'], pd.Series) and isinstance(var_params['std'], pd.Series):
+            elif isinstance(var_params['mean'], (pd.Series, pd.DataFrame)) and isinstance(var_params['std'], (pd.Series, pd.DataFrame)):
                 var_params['mean'].to_csv(os.path.join(var_dir, 'mean.csv'))
                 var_params['std'].to_csv(os.path.join(var_dir, 'std.csv'))
             
             else:
-                raise TypeError(f"Normalization parameters must be either xarray.DataArray or pandas.DataFrame. Found {type(var_params['mean'])} and {type(var_params['std'])} for variable {variable}")
+                raise TypeError(f"Normalization parameters must be either xarray.DataArray or pandas.DataFrame/pandas.Series. Found {type(var_params['mean'])} and {type(var_params['std'])} for variable {variable}")
 
         print(f"Normalization parameters saved to {filepath}")
 
     def load(self, filepath: str):
+        if os.listdir(filepath) == []:
+            raise FileNotFoundError(f"No normalization parameters found in {filepath}")
+        
         # discover the variables by looking at the directories in the filepath
         for variable in os.listdir(filepath):
             var_dir = os.path.join(filepath, variable)
@@ -117,8 +146,8 @@ class NetCDFNormalizer:
                 std_path_csv = os.path.join(var_dir, 'std.csv')
 
                 if os.path.exists(mean_path_nc) and os.path.exists(std_path_nc):
-                    var_params['mean'] = xr.load_dataarray(mean_path_nc)
-                    var_params['std'] = xr.load_dataarray(std_path_nc)
+                    var_params['mean'] = xr.load_dataarray(mean_path_nc).compute()
+                    var_params['std'] = xr.load_dataarray(std_path_nc).compute()
 
                 elif os.path.exists(mean_path_csv) and os.path.exists(std_path_csv):
                     var_params['mean'] = pd.read_csv(mean_path_csv).set_index(self.average_per)
@@ -128,6 +157,20 @@ class NetCDFNormalizer:
                     raise FileNotFoundError(f"Normalization parameters for variable {variable} not found in {var_dir}")
 
                 self.params[variable] = var_params
+            
+        self.loaded_existing_params = True
 
         print(f"Normalization parameters loaded from {filepath}")
+
+    def try_load(self, filepath: str):
+        try:
+            self.load(filepath)
+            return True
+        except Exception as e:
+            print(f"Could not load normalization parameters from {filepath}. Error: {e}")
+            return False
+        
+    def save_if_not_loaded(self, filepath: str):
+        if not self.loaded_existing_params:
+            self.save(filepath)
         
