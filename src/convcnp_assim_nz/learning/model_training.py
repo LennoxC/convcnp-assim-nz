@@ -8,6 +8,11 @@ import torch
 from matplotlib.colors import CenteredNorm
 import matplotlib
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.basemap import Basemap
+from deepsensor.data.loader import TaskLoader
+from convcnp_assim_nz.utils.variables.coord_names import LATITUDE, LONGITUDE
+
 # TODO: Investigate using torch.amp.GradScaler for mixed precision training
 
 def compute_val_loss(model, val_tasks):
@@ -335,11 +340,6 @@ def return_sample_predictions(era5_date_ds,
                               padding = 200, 
                               custom_norm=None,
                               subtitle_text="Placeholder subtitle text", title_append=""):
-    
-    import matplotlib.pyplot as plt
-    from mpl_toolkits.basemap import Basemap
-    from deepsensor.data.loader import TaskLoader
-    from convcnp_assim_nz.utils.variables.coord_names import LATITUDE, LONGITUDE
 
     era5_date_processed, nzra_processed, stations_date_processed = data_processor([era5_date_ds, nzra_date_ds, stations_date_df])
 
@@ -593,3 +593,143 @@ def subsample_targets(
     Y_t_aux_sub = Y_t_aux[:, ii, jj]
 
     return X_t_sub, Y_t_sub, Y_t_aux_sub
+
+
+    # a method specific to the stations target set.
+    # predictions are made across the entire NZRA grid.
+
+def stations_sample_predictions(era5_train_date_ds, 
+                                era5_target_field,
+                                nzra_grid, 
+                                stations_train_date_df, 
+                                ds_aux_processed, 
+                                ds_aux_coarse_processed, 
+                                val_date, 
+                                data_processor, 
+                                epoch, 
+                                model, 
+                                target, 
+                                model_target,
+                                custom_norm,
+                                padding = 200, 
+                                subtitle_text=""):
+    
+    era5_date_processed, stations_date_processed = data_processor([era5_train_date_ds, stations_train_date_df])
+
+    temp_task_loader = TaskLoader(
+        context = [stations_date_processed, era5_date_processed, ds_aux_coarse_processed], 
+        target = stations_date_processed,
+        aux_at_targets = ds_aux_processed)
+    
+    # the task for inference/prediction
+    task = temp_task_loader(val_date, context_sampling=["all", "all", "all"], target_sampling=["all"])
+
+    pred_grid = model.predict(task, X_t=nzra_grid[[LATITUDE, LONGITUDE]], unnormalise=False)
+
+    pred_unnorm_mean = custom_norm.unnormalize_xr(pred_grid[f"{target}_norm"], variable="mean", internal_variable=target, coord_mapping = {LATITUDE: "x1", LONGITUDE: "x2"})
+    
+    pred_unnorm_mean = data_processor.map_coords(pred_unnorm_mean, unnorm=True)
+
+    pred_at_stations = pred_unnorm_mean.sel(lat=stations_train_date_df['lat'].values, lon=stations_train_date_df['lon'].values, method='nearest')
+
+    print("Prediction complete, now plotting...")
+
+    # Number of annotated grid points
+    N_ANN = 5
+
+    fig, ax = plt.subplots(2, 2, figsize=(12, 12))
+    
+    fig.suptitle(f'Epoch {epoch} Predictions for {val_date}', fontsize=18)
+    
+    fig.text(0.5, 0.94, subtitle_text, ha='center', fontsize=12, color='gray')
+
+    # --- DATA EXTRACTION ---
+    truth_field = stations_train_date_df[target].sel(time=val_date).values
+    
+    pred_mean = pred_grid[f"{model_target}_norm"]["mean"].isel(time=0).values
+    pred_std  = pred_grid[f"{model_target}_norm"]["std"].isel(time=0).values
+    
+    truth_field_adj = truth_field + era5_target_field.values
+
+    truth_field_adj = truth_field + era5_train_date_ds[target].values
+    pred_truth_error = truth_field_adj - pred_mean 
+
+
+    Ny, Nx = truth_field.shape
+
+    # add padding to the annotated points
+    Ny = Ny - padding//2
+    Nx = Nx - padding//2
+
+    # Colour scale based on NZRA target image
+    vmin = min(truth_field.min(), pred_mean.min())
+    vmax = max(truth_field.max(), pred_mean.max())
+
+    # use this to plot range solely from NZRA          
+    #vmin = truth_field.min()
+    #vmax = truth_field.max()
+
+    # Annotated grid points
+    ys = np.linspace(padding//2, Ny - 1, N_ANN, dtype=int)
+    xs = np.linspace(padding//2, Nx - 1, N_ANN, dtype=int)
+    annot_points = [(y, x) for y in ys for x in xs]
+
+    # --- TOP LEFT: NZRA temperature ---
+    im0 = ax[0, 0].imshow(truth_field, origin='lower', vmin=vmin, vmax=vmax)
+    ax[0, 0].set_title(f"NZRA {model_target}")
+    fig.colorbar(im0, ax=ax[0, 0], shrink=0.7)
+    for y, x in annot_points:
+        ax[0, 0].text(x, y, f"{truth_field[y,x]:.1f}", fontsize=7,
+                    color='white', ha='center', va='center')
+
+    # --- TOP RIGHT: stations ---
+    ax[0, 1].set_aspect('equal', adjustable='box')
+
+    m = Basemap(
+        projection='merc',
+        llcrnrlat=nzra_grid[LATITUDE].min().item(),
+        urcrnrlat=nzra_grid[LATITUDE].max().item(),
+        llcrnrlon=nzra_grid[LONGITUDE].min().item(),
+        urcrnrlon=nzra_grid[LONGITUDE].max().item(),
+        resolution='i',
+        ax=ax[0, 1]
+    )
+
+    m.drawcoastlines()
+    m.drawcountries()
+
+    df_day = stations_train_date_df.reset_index().loc[
+        lambda df: df['time'] == val_date
+    ]
+
+    x, y = m(df_day['lon'].values, df_day['lat'].values)
+    sc = m.scatter(x, y,
+                c=df_day[target].values,
+                cmap='coolwarm',
+                marker='o',
+                edgecolor='k',
+                s=80)
+
+    ax[0, 1].set_title("Station Observations")
+    fig.colorbar(sc, ax=ax[0, 1], shrink=0.7)
+
+    # --- BOTTOM LEFT: PRED MEAN ---
+    im2 = ax[1, 0].imshow(pred_mean, origin='lower', vmin=vmin, vmax=vmax)
+    ax[1, 0].set_title(f"ConvCNP {target} prediction (mean)")
+    fig.colorbar(im2, ax=ax[1, 0], shrink=0.7)
+    for y, x in annot_points:
+        ax[1, 0].text(x, y, f"{pred_mean[y,x]:.1f}", fontsize=7,
+                    color='white', ha='center', va='center')
+
+    # --- BOTTOM RIGHT: PRED STD ---
+    im3 = ax[1, 1].imshow(pred_std, origin='lower')
+    ax[1, 1].set_title("ConvCNP Standard Deviation")
+    fig.colorbar(im3, ax=ax[1, 1], shrink=0.7)
+    for y, x in annot_points:
+        ax[1, 1].text(x, y, f"{pred_std[y,x]:.2f}", fontsize=6,
+                    color='white', ha='center', va='center')
+        
+            
+    plt.tight_layout()
+
+    return fig

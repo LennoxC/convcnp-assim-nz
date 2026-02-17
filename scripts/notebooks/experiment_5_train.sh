@@ -15,7 +15,7 @@ cd /home/crowelenn/dev/convcnp-assim-nz
 
 export DEVELOPMENT_ENVIRONMENT="0"
 export DATASET_GENERATION="0" # leave this as 0
-export EXPERIMENT_NAME="experiment5_nzra_diff_coord_norm_1"
+export EXPERIMENT_NAME="experiment5_nzra_diff_coord_norm_small"
 
 pixi run -e gpu python -m nbconvert \
   --to notebook \

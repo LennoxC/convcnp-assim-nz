@@ -1,0 +1,13 @@
+# convcnp-assim-nz
+## Update Feb 2026 | Lennox Crowe
+
+#### Notes on the environment
+- deepsensor modifications
+- neuralprocesses modifications
+
+#### Things we tried
+- not using edge masking
+- not using per-coordinate normalisation...
+
+#### Things to try next
+- per-coordinate normalization, but not performing this on the difference between (stations/NZRA) to ERA5. I.e. predicting per-location z-normalized temperature, rather than per-location z-normalized residuals between the station/target and ERA5. There is not a strong relationship between per-coordinate normalized station-era5 residual and NZRA-era5 residual. 
