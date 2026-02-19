@@ -20,8 +20,8 @@ default = ["cpu"]
 
 [tool.pixi.pypi-dependencies]
 convcnp_assim_nz = { path = ".", editable = true }
-NeuralProcesses = { path = "../neuralprocesses", editable = true }
-deepsensor = { path = "../deepsensor", editable = true }
+NeuralProcesses = { git = "https://github.com/LennoxC/neuralprocesses.git", rev = "b7dbcf0" }
+deepsensor = { git = "https://github.com/LennoxC/deepsensor.git", rev = "65f1954" }
 
 [tool.pixi.tasks]
 

@@ -600,59 +600,85 @@ def subsample_targets(
 
 def stations_sample_predictions(era5_train_date_ds, 
                                 era5_target_field,
-                                nzra_grid, 
+                                nzra_target, 
                                 stations_train_date_df, 
+                                stations_from_nzra,
                                 ds_aux_processed, 
                                 ds_aux_coarse_processed, 
                                 val_date, 
                                 data_processor, 
                                 epoch, 
                                 model, 
-                                target, 
-                                model_target,
+                                target,
                                 custom_norm,
                                 padding = 200, 
                                 subtitle_text=""):
     
+    model_target = f"{target}_diff"
+    model_target_norm = f"{model_target}_norm"
+    model_target_station_norm = f"{model_target}_station_norm"
+    
     era5_date_processed, stations_date_processed = data_processor([era5_train_date_ds, stations_train_date_df])
+    stations_from_nzra_processed, nzra_target_processed = custom_norm([stations_from_nzra, nzra_target])
+
+    stations_from_nzra_deepsensor = data_processor.map_coords(stations_from_nzra_processed)
+    nzra_target_deepsensor = data_processor.map_coords(nzra_target_processed)
 
     temp_task_loader = TaskLoader(
-        context = [stations_date_processed, era5_date_processed, ds_aux_coarse_processed], 
-        target = stations_date_processed,
+        context = [stations_from_nzra_deepsensor, era5_date_processed, ds_aux_coarse_processed], 
+        target = nzra_target_deepsensor,
         aux_at_targets = ds_aux_processed)
     
     # the task for inference/prediction
     task = temp_task_loader(val_date, context_sampling=["all", "all", "all"], target_sampling=["all"])
 
-    pred_grid = model.predict(task, X_t=nzra_grid[[LATITUDE, LONGITUDE]], unnormalise=False)
+    # make a prediction across the grid. The grid is non-null target points from NZRA_Target
+    pred_grid = model.predict(task, X_t=nzra_target, unnormalise=False)
+    pred_grid_reindex = data_processor.map_coords(pred_grid[f"{model_target_norm}"], unnorm=True)
 
-    pred_unnorm_mean = custom_norm.unnormalize_xr(pred_grid[f"{target}_norm"], variable="mean", internal_variable=target, coord_mapping = {LATITUDE: "x1", LONGITUDE: "x2"})
-    
-    pred_unnorm_mean = data_processor.map_coords(pred_unnorm_mean, unnorm=True)
+    # use the custom norm to unnormalize the predictions across the grid, then map back to original coordinates (from model coordinates)
+    pred_unnorm_mean = custom_norm.unnormalize_xr(pred_grid_reindex, variable="mean", internal_variable=model_target)
+    #pred_unnorm_mean = data_processor.map_coords(pred_unnorm_mean, unnorm=True)
 
-    pred_at_stations = pred_unnorm_mean.sel(lat=stations_train_date_df['lat'].values, lon=stations_train_date_df['lon'].values, method='nearest')
+    print(np.nanmin(pred_unnorm_mean.values), np.nanmax(pred_unnorm_mean.values))
+    custom_norm.print_internal_variables()
 
-    print("Prediction complete, now plotting...")
+    # select the predictions at the station locations
+    pred_at_stations = pred_unnorm_mean.where(stations_from_nzra[f"{model_target_station_norm}"].notnull())
 
     # Number of annotated grid points
-    N_ANN = 5
+    N_ANN = 10
 
-    fig, ax = plt.subplots(2, 2, figsize=(12, 12))
+    fig, ax = plt.subplots(3, 2, figsize=(12, 18))
     
     fig.suptitle(f'Epoch {epoch} Predictions for {val_date}', fontsize=18)
     
     fig.text(0.5, 0.94, subtitle_text, ha='center', fontsize=12, color='gray')
 
     # --- DATA EXTRACTION ---
-    truth_field = stations_train_date_df[target].sel(time=val_date).values
+
+    # era5 interpolation
+    era5_target_field_interp = era5_target_field.interp(lat=nzra_target[LATITUDE], lon=nzra_target[LONGITUDE], method="linear")
+
+    # reconstructed NZRA temperature
+    nzra_reconstructed_temperature = era5_target_field_interp.values + nzra_target[model_target].values
+
+    # the 'true' predictions from NZRA
+    truth_field = nzra_target[model_target].values
     
+    # prediction bias (as we are predicting normalized difference from ERA5)
+
     pred_mean = pred_grid[f"{model_target}_norm"]["mean"].isel(time=0).values
     pred_std  = pred_grid[f"{model_target}_norm"]["std"].isel(time=0).values
-    
-    truth_field_adj = truth_field + era5_target_field.values
 
-    truth_field_adj = truth_field + era5_train_date_ds[target].values
-    pred_truth_error = truth_field_adj - pred_mean 
+    # filter pred mean and pred std to only where nzra_target is not null (i.e. only where we have a target value to compare to)
+    # pred_mean and pred_std are now arrays, not xarray DataArrays, so we need to use np.where instead of .where
+    mask = nzra_target[model_target].notnull().compute()
+    pred_mean = np.where(mask, pred_mean, np.nan)
+    pred_std = np.where(mask, pred_std, np.nan)
+    predicted_temperature = pred_unnorm_mean + era5_target_field_interp.values
+    predicted_temperature_error = predicted_temperature - nzra_reconstructed_temperature
+    nzra_era5_diff_raw = nzra_target_processed[model_target_norm]
 
 
     Ny, Nx = truth_field.shape
@@ -661,75 +687,77 @@ def stations_sample_predictions(era5_train_date_ds,
     Ny = Ny - padding//2
     Nx = Nx - padding//2
 
-    # Colour scale based on NZRA target image
-    vmin = min(truth_field.min(), pred_mean.min())
-    vmax = max(truth_field.max(), pred_mean.max())
-
-    # use this to plot range solely from NZRA          
-    #vmin = truth_field.min()
-    #vmax = truth_field.max()
-
     # Annotated grid points
     ys = np.linspace(padding//2, Ny - 1, N_ANN, dtype=int)
     xs = np.linspace(padding//2, Nx - 1, N_ANN, dtype=int)
     annot_points = [(y, x) for y in ys for x in xs]
 
+    # Charts:
+    # -----------------
+    # NZRA Temperature
+    # Predicted Temperature
+    # NZRA - ERA5 (normalized)
+    # raw model prediction
+    # model uncertainty with station overlay
+    # model error (compared to NZRA) in temperature
+
+    vmin_top = np.nanmin(nzra_reconstructed_temperature)
+    vmax_top = np.nanmax(nzra_reconstructed_temperature)
+
     # --- TOP LEFT: NZRA temperature ---
-    im0 = ax[0, 0].imshow(truth_field, origin='lower', vmin=vmin, vmax=vmax)
-    ax[0, 0].set_title(f"NZRA {model_target}")
+    im0 = ax[0, 0].imshow(nzra_reconstructed_temperature, origin='lower', vmin=vmin_top, vmax=vmax_top)
+    ax[0, 0].set_title(f"NZRA {target} (reconstructed)")
     fig.colorbar(im0, ax=ax[0, 0], shrink=0.7)
     for y, x in annot_points:
-        ax[0, 0].text(x, y, f"{truth_field[y,x]:.1f}", fontsize=7,
+        ax[0, 0].text(x, y, f"{nzra_reconstructed_temperature[y,x]:.1f}", fontsize=7,
                     color='white', ha='center', va='center')
 
-    # --- TOP RIGHT: stations ---
-    ax[0, 1].set_aspect('equal', adjustable='box')
-
-    m = Basemap(
-        projection='merc',
-        llcrnrlat=nzra_grid[LATITUDE].min().item(),
-        urcrnrlat=nzra_grid[LATITUDE].max().item(),
-        llcrnrlon=nzra_grid[LONGITUDE].min().item(),
-        urcrnrlon=nzra_grid[LONGITUDE].max().item(),
-        resolution='i',
-        ax=ax[0, 1]
-    )
-
-    m.drawcoastlines()
-    m.drawcountries()
-
-    df_day = stations_train_date_df.reset_index().loc[
-        lambda df: df['time'] == val_date
-    ]
-
-    x, y = m(df_day['lon'].values, df_day['lat'].values)
-    sc = m.scatter(x, y,
-                c=df_day[target].values,
-                cmap='coolwarm',
-                marker='o',
-                edgecolor='k',
-                s=80)
-
-    ax[0, 1].set_title("Station Observations")
-    fig.colorbar(sc, ax=ax[0, 1], shrink=0.7)
-
-    # --- BOTTOM LEFT: PRED MEAN ---
-    im2 = ax[1, 0].imshow(pred_mean, origin='lower', vmin=vmin, vmax=vmax)
-    ax[1, 0].set_title(f"ConvCNP {target} prediction (mean)")
-    fig.colorbar(im2, ax=ax[1, 0], shrink=0.7)
+    # --- TOP RIGHT: MODEL TEMPERATURE ---
+    im1 = ax[0, 1].imshow(predicted_temperature, origin='lower', vmin=vmin_top, vmax=vmax_top)
+    ax[0, 1].set_title(f"ConvCNP {model_target} prediction")
+    fig.colorbar(im1, ax=ax[0, 1], shrink=0.7)
     for y, x in annot_points:
-        ax[1, 0].text(x, y, f"{pred_mean[y,x]:.1f}", fontsize=7,
-                    color='white', ha='center', va='center')
-
-    # --- BOTTOM RIGHT: PRED STD ---
-    im3 = ax[1, 1].imshow(pred_std, origin='lower')
-    ax[1, 1].set_title("ConvCNP Standard Deviation")
-    fig.colorbar(im3, ax=ax[1, 1], shrink=0.7)
-    for y, x in annot_points:
-        ax[1, 1].text(x, y, f"{pred_std[y,x]:.2f}", fontsize=6,
+        ax[0, 1].text(x, y, f"{predicted_temperature[y,x]:.1f}", fontsize=7,
                     color='white', ha='center', va='center')
         
-            
+    vmin_mid = np.nanmin(nzra_era5_diff_raw.values)
+    vmax_mid = np.nanmax(nzra_era5_diff_raw.values)
+
+    # --- MID LEFT: NZRA NORM ---
+    im3 = ax[1, 0].imshow(nzra_era5_diff_raw.values, origin='lower', vmin=vmin_mid, vmax=vmax_mid)
+    ax[1, 0].set_title(f"NZRA {model_target} (normalized)")
+    fig.colorbar(im3, ax=ax[1, 0], shrink=0.7)
+    for y, x in annot_points:
+        ax[1, 0].text(x, y, f"{nzra_era5_diff_raw.values[y,x]:.1f}", fontsize=7,
+                    color='white', ha='center', va='center')
+
+    # --- MID RIGHT: PRED MEAN NORM ---
+    im2 = ax[1, 1].imshow(pred_mean, origin='lower', vmin=vmin_mid, vmax=vmax_mid)
+    ax[1, 1].set_title(f"ConvCNP {model_target_norm} prediction (mean)")
+    fig.colorbar(im2, ax=ax[1, 1], shrink=0.7)
+    for y, x in annot_points:
+        ax[1, 1].text(x, y, f"{pred_mean[y,x]:.1f}", fontsize=7,
+                    color='white', ha='center', va='center')
+    
+    # --- BOTTOM LEFT: MODEL UNCERTAINTY ---    
+    im3 = ax[2, 0].imshow(pred_std, origin='lower')
+    ax[2, 0].set_title("ConvCNP Standard Deviation")
+    fig.colorbar(im3, ax=ax[2, 0], shrink=0.7)
+    for y, x in annot_points:
+        ax[2, 0].text(x, y, f"{pred_std[y,x]:.2f}", fontsize=6,
+                    color='white', ha='center', va='center')
+        
+    # --- BOTTOM RIGHT: PRED ERROR ---
+    custom_cmap = matplotlib.colors.LinearSegmentedColormap.from_list(
+            "custom_red_blue", ["red", "white", "blue"], N=256
+        )
+    im4 = ax[2, 1].imshow(predicted_temperature_error, origin='lower', cmap=custom_cmap, norm=CenteredNorm())
+    ax[2, 1].set_title(f"Prediction Error (compared to NZRA)")
+    fig.colorbar(im4, ax=ax[2, 1], shrink=0.7)
+    for y, x in annot_points:
+        ax[2, 1].text(x, y, f"{predicted_temperature_error[y,x]:.1f}", fontsize=7,
+                    color='black', ha='center', va='center')
+
     plt.tight_layout()
 
     return fig

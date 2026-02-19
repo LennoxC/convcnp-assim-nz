@@ -11,7 +11,7 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 # delete all files in the dataset directory
-rm "${DIR_BASE}"/experiment4_nzra_target_train_tasks/*
-rm "${DIR_BASE}"/experiment4_nzra_target_val_tasks/*
+rm "${DIR_BASE}"/experiment5_nzra_target_train_tasks/*
+rm "${DIR_BASE}"/experiment5_nzra_target_val_tasks/*
 
 echo "Datasets cleared from ${DIR_BASE}."
