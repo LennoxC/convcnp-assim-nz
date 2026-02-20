@@ -2,26 +2,20 @@
 
 Data Assimilation in weather forecasting involves combining a model's previous forecast with new, real-time sensor observations, to create a more accurate picture of the current state of the atmosphere. This is then used for the next numerical weather prediction model run, improving the accuracy of future observations.
 
-In this repository, we experiment with using Convolutional Conditional Neural Processes (ConvCNP) for data assimilation.
+In this repository, we experiment with using Convolutional Conditional Neural Processes (ConvCNP) for data assimilation. If a ConvCNP model can speed up data assimilation, it will allow for near-real-time nowcasting, updating continuously as sensor readings arrive. This will be useful for the renewable energy industry, emergency management, and any other industry which requires a live view of current weather conditions across the country.
 
-### Notebooks
-Experiments are done in the notebooks folder. These are generally commited with results. Running the notebook should re-produce these results. At times, the notebooks folder may contain `debug` or `eda` folders, containing notebooks for these respective purposes.
+### Documentation
 
-### Deepsensor
-Some modifications have been made to the deepsensor repository. There is a [fork of deepsensor here](https://github.com/LennoxC/deepsensor/tree/main). Pip is configured to import the main branch of this fork in `requirements.txt`.
+I'd reccomend reading the documentation in the `./docs` folder. Start with `update-feb-2026` and go from there. 
 
-We anticipate that we may need to fork neuralprocesses in the future too.
-
-### Using this repository
-
-Notebooks can be run with `scripts/run_notebook_nohup.sh`. This automatically launches tensorboard, runs the notebook with nohup (which ignores the disconnect signal so you can power off your laptop while it runs on a GPU server), outputs logs, and saves the output notebook to the `executed` directory at the notebook location. Of course, while developing, you can interactively run notebooks too. This script just allows you to run notebooks in a more production-like environment.
-
-There are also some (or *one* currently) command like utilties:
-- `src.utils.era5_loader.main`: This module defines a command line tool for downloading ERA5 data from the [Climate Data Store](https://cds.climate.copernicus.eu/). 
-
-*There are more entry points to come, maybe.*
-
-Each entry point has corresponding documentation in the `docs` folder.
+The following documentation is available:
+- **data_api.md**: Explains the codebase which the notebooks leverage heavily
+- **era5_loader.md**: Explains how to use the ERA5 loader utility. This isn't very relevant when on the HPC with ERA5 data already downloaded.
+- **experiments.md**: Explains the purpose of each notebook in the notebooks directory.
+- **notebooks.md**: Explains the notebooks directory, where experiments were being run.
+- **pixi.md**: Useful notes on the pixi environment, running with interactive compute in VSCode, submitting jobs to the HPC etc. I'd reccomend reading this one.
+- **tensorboard.md**: Starting tensorboard and viewing the experiments we have completed already.
+- **scripts.md**: The scripts directory contains various bash scripts. This documentation explains what each script is for.
 
 ### Environmental Variables
 

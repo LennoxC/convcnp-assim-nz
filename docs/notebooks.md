@@ -1,6 +1,6 @@
 # Running notebooks
 
-Experiments - i.e. modifications to the model & data, were conducted within notebooks. While debugging, the notebooks can be run against interactive compute. Some notebooks will have different settings when run in "development" mode. Development mode is set by an environmental variable. This defaults to "true" (or, more precisely, the notebooks set a python variable to true if there is no development environmental variable present). When running via a pbs script, you may want to set this environmental variable to false. Typically, running in development mode reduces the dataset size and model complexity, which is desireable when running on interactive compute.
+Experiments - i.e. modifications to the model & data, were conducted within notebooks. While debugging, the notebooks can be run against interactive compute. Some notebooks will have different settings when run in "development" mode. Development mode is set by an environmental variable. This defaults to "true" (or, more precisely, the notebooks set a python variable to true if there is no development environmental variable present). When running via a pbs script, you may want to set this environmental variable to false. Typically, running in development mode reduces the dataset size and model complexity, which is desireable when running on interactive compute. How dev mode affects dataset size is set up at the top of each notebook. Inside the `if development_mode:` function, override any hyperparameters you see fit.
 
 ### Experiments 1, 2, and 3
 
@@ -22,4 +22,15 @@ Experiment 5 shifted from temperature prediction, to prediction of the ERA5-NZRA
 
 #### Running Experiments 4 & 5
 
-**Detailed instructions on how to run these notebooks can be found at the top of `experiment5_nzra_diff.ipynb`**. But in brief: notebooks can be run in 'dataset generation' or 'model training' mode. As there are too many tasks to store in an in-memory python array, tasks are pickled and saved to the disk in dataset generation mode. Then in model training mode, dataset generation is skipped, and tasks are read from the disk and used to train the model. The mode is controlled via an environmental variable, and all the code for both modes sits in the notebooks. You can debug in dataset generation mode or training mode, but model training with interactive compute will likely crash the kernel.
+There are two important filepaths to set when running the notebooks. These are found in the .env file. I organized the paths like this:
+
+```
+DATASET_PICKLE_PATH = /esi/project/niwa00004/<USER>/data/pickle/<descriptive_name>/
+MODEL_DIR = /esi/project/niwa00004/<USER>/data/model/<descriptive_model_name>/
+```
+
+`DATASET_PICKLE_PATH` determines where the pickled dataset is saved to. As you might want to do multiple experiments (i.e. train multiple models) on the same dataset, this is seperate to the `MODEL_DIR` path. Note that pickled datasets can get huge - hundreds of gigabytes for multi-year hourly datasets. Be careful!
+
+`MODEL_DIR` controls where the model parameters are saved, when model checkpointing occurs. This has been of limited concern so far, as no models have been successful enough to warrent saving... however this was tested in experiment 2 (transfer learning). More importantly, an additional path is formed by appending the environmental variable `EXPERIMENT_NAME` (which is set in the experiment_5_datagen scripts). Inside this path, the normalization parameters are saved between runs. While running in a notebook against interactive compute, `EXPERIMENT_NAME` is set to "default_experiment". Then in the datagen/train scripts, you set `EXPERIMENT_NAME` to something different. As the dataset is often filtered to a subset of datetimes in dev mode, you want to store the normalization parameters in different places, hence this extra path. If you want to use previously defined normalization parameters, make sure that the `MODEL_DIR` and `EXPERIMENT_NAME` haven't changed since you fit the data processors (both deepsensor and custom).
+
+Notebooks can be run in 'dataset generation' or 'model training' mode. **Detailed instructions on how to run these notebooks can be found at the top of `experiment5_nzra_diff.ipynb`**, which explains how the python variables for development mode and dataset generation mode work. As there are too many tasks to store in an in-memory python array, tasks are pickled and saved to the disk in dataset generation mode. Then in model training mode, dataset generation is skipped, and tasks are read from the disk and used to train the model. The mode is controlled via an environmental variable, and all the code for both modes sits in the notebooks. You can debug in dataset generation mode or training mode, but model training with interactive compute will likely crash the kernel.

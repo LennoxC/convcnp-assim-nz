@@ -1,15 +1,6 @@
 # convcnp-assim-nz
 ## Update Feb 2026 | Lennox Crowe
 
-### Using this Documentation
-
-The following documentation is available:
-- **data_api.md**: Explains the codebase which the notebooks leverage heavily
-- **era5_loader.md**: Explains how to use the ERA5 loader utility. This isn't very relevant when on the HPC with ERA5 data already downloaded.
-- **experiments.md**: Explains the purpose of each notebook in the notebooks directory.
-- **pixi.md**: Useful notes on the pixi environment, running with interactive compute in VSCode, submitting jobs to the HPC etc. I'd reccomend reading this one.
-- **tensorboard.md**: Starting tensorboard and viewing the experiments we have completed already.
-
 ### Project Update
 The goal of the project is to make a deep-learning powered data assimilation model for accurate now-casting, for use by the energy sector, emergency responders etc. As of Feb 2026, a proof-of-concept for temperature interpolation is underway with promising results, but not completed. Once temperature interpolation is working well, we will focus on wind and solar irradiance interpolation.
 
